@@ -105,7 +105,7 @@ class PlatformReporter:
         request = urllib.request.Request(
             f"{self._config.base_url}/api/status",
             data=body,
-            headers={"Content-Type": "application/json"},
+            headers=self._headers(),
             method="POST",
         )
         try:
@@ -119,7 +119,7 @@ class PlatformReporter:
         request = urllib.request.Request(
             f"{self._config.base_url}/api/events/recognition",
             data=body,
-            headers={"Content-Type": "application/json"},
+            headers=self._headers(),
             method="POST",
         )
         try:
@@ -162,6 +162,15 @@ class PlatformReporter:
         if emotion:
             event["emotion"] = emotion
         return event
+
+    def _headers(self) -> dict[str, str]:
+        headers = {
+            "Content-Type": "application/json",
+            "X-ASDUN-Device-Id": self._config.device_id,
+        }
+        if self._config.device_token:
+            headers["X-ASDUN-Device-Token"] = self._config.device_token
+        return headers
 
 
 def _is_known_identity(identity: dict[str, Any]) -> bool:

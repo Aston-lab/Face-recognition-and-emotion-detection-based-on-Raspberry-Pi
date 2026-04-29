@@ -85,7 +85,9 @@
         border-color: var(--blue);
       }
 
-      select {
+      select,
+      input,
+      textarea {
         min-height: 34px;
         min-width: 150px;
         padding: 0 10px;
@@ -94,6 +96,21 @@
         background: var(--surface);
         color: var(--text);
         font-size: 14px;
+      }
+
+      textarea {
+        width: min(420px, 100%);
+        min-height: 34px;
+        padding-top: 8px;
+        resize: vertical;
+      }
+
+      .command-form {
+        display: grid;
+        grid-template-columns: minmax(160px, 1fr) minmax(150px, 1fr) minmax(220px, 2fr) auto;
+        gap: 10px;
+        align-items: start;
+        margin-bottom: 10px;
       }
 
       .section-actions {
@@ -227,6 +244,23 @@
         gap: 7px;
       }
 
+      .metric-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .metric {
+        color: var(--text);
+        white-space: nowrap;
+      }
+
+      .status-text {
+        min-height: 22px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
       .emotion-row {
         display: grid;
         grid-template-columns: 72px minmax(120px, 1fr) 56px;
@@ -276,6 +310,10 @@
           margin-top: 16px;
         }
 
+        .command-form {
+          grid-template-columns: 1fr;
+        }
+
         table {
           display: block;
           overflow-x: auto;
@@ -320,6 +358,56 @@
           </thead>
           <tbody id="devices">
             <tr><td class="empty" colspan="8">No devices</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <h2>Commands</h2>
+          <span id="command-count" class="muted">0</span>
+        </div>
+        <div class="command-form">
+          <select id="command-device" aria-label="Command device"></select>
+          <input id="command-name" type="text" placeholder="set_mode" aria-label="Command name" />
+          <textarea id="command-payload" placeholder='{"mode":"hybrid"}' aria-label="Command payload"></textarea>
+          <button id="send-command" type="button">Send</button>
+        </div>
+        <div id="command-status" class="status-text"></div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 16%">Time</th>
+              <th style="width: 16%">Device</th>
+              <th style="width: 18%">Command</th>
+              <th style="width: 14%">Status</th>
+              <th>Payload / Result</th>
+            </tr>
+          </thead>
+          <tbody id="commands">
+            <tr><td class="empty" colspan="5">No commands</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <h2>Telemetry</h2>
+          <span id="telemetry-count" class="muted">0</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 18%">Time</th>
+              <th style="width: 18%">Device</th>
+              <th>Temperature</th>
+              <th>Humidity</th>
+              <th>Light</th>
+              <th>RSSI</th>
+            </tr>
+          </thead>
+          <tbody id="telemetry">
+            <tr><td class="empty" colspan="6">No telemetry</td></tr>
           </tbody>
         </table>
       </section>
@@ -376,6 +464,8 @@
     <script>
       const state = {
         devices: [],
+        commands: [],
+        telemetry: [],
         people: [],
         recognition_events: [],
         selectedPerson: "",
@@ -443,6 +533,15 @@
           if (status.identity_ready != null) parts.push(`identity=${status.identity_ready ? "ready" : "not_ready"}`);
           return parts.join("  ");
         }
+        if (device.role === "esp32") {
+          const parts = [];
+          if (status.temperature != null) parts.push(`temp=${Number(status.temperature).toFixed(1)}C`);
+          if (status.humidity != null) parts.push(`humidity=${Number(status.humidity).toFixed(1)}%`);
+          if (status.light != null) parts.push(`light=${status.light}`);
+          if (status.rssi != null) parts.push(`rssi=${status.rssi}`);
+          if (status.uptime_ms != null) parts.push(`uptime=${Math.round(Number(status.uptime_ms) / 1000)}s`);
+          return parts.join("  ");
+        }
         return shortStatus(status);
       }
 
@@ -507,6 +606,57 @@
         }).join("");
       }
 
+      function renderCommandDevices() {
+        const select = $("command-device");
+        const current = select.value;
+        const devices = state.devices || [];
+        select.innerHTML = devices.map((device) => {
+          const id = escapeHtml(device.device_id || "");
+          const label = escapeHtml(device.display_name || device.device_id || "");
+          return `<option value="${id}">${label}</option>`;
+        }).join("");
+        if (devices.some((device) => device.device_id === current)) {
+          select.value = current;
+        }
+      }
+
+      function commandStatusClass(status) {
+        if (status === "completed") return "online";
+        if (status === "failed") return "offline";
+        if (status === "pending") return "warn";
+        return "neutral";
+      }
+
+      function commandSummary(command) {
+        const payload = JSON.stringify(command.payload || {});
+        const result = JSON.stringify(command.result || {});
+        if (command.status === "completed") return result;
+        if (command.status === "failed") return command.error || result;
+        return payload;
+      }
+
+      function renderCommands() {
+        const commands = state.commands || [];
+        $("command-count").textContent = `${commands.length}`;
+        const body = $("commands");
+        if (!commands.length) {
+          body.innerHTML = '<tr><td class="empty" colspan="5">No commands</td></tr>';
+          return;
+        }
+        body.innerHTML = commands.slice(0, 50).map((command) => {
+          const summary = commandSummary(command);
+          return `
+            <tr>
+              <td>${timeText(command.created_ms)}</td>
+              <td class="mono truncate">${command.device_id || "-"}</td>
+              <td class="mono truncate" title="${escapeHtml(command.command_id || "")}">${escapeHtml(command.command || "-")}</td>
+              <td><span class="pill ${commandStatusClass(command.status)}">${escapeHtml(command.status || "-")}</span></td>
+              <td class="mono truncate" title="${escapeHtml(summary)}">${escapeHtml(summary)}</td>
+            </tr>
+          `;
+        }).join("");
+      }
+
       function emotionClass(label) {
         const normalized = String(label || "").toLowerCase();
         if (normalized === "happy") return "happy";
@@ -566,6 +716,36 @@
         }).join("");
       }
 
+      function metricValue(value, suffix = "") {
+        if (value == null || value === "") return "-";
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric)) return escapeHtml(value);
+        return `${numeric.toFixed(1)}${suffix}`;
+      }
+
+      function renderTelemetry() {
+        const telemetry = state.telemetry || [];
+        $("telemetry-count").textContent = `${telemetry.length}`;
+        const body = $("telemetry");
+        if (!telemetry.length) {
+          body.innerHTML = '<tr><td class="empty" colspan="6">No telemetry</td></tr>';
+          return;
+        }
+        body.innerHTML = telemetry.slice(0, 50).map((event) => {
+          const raw = event.telemetry || {};
+          return `
+            <tr>
+              <td>${timeText(event.ts_ms)}</td>
+              <td class="mono truncate">${event.device_id || "-"}</td>
+              <td>${metricValue(event.temperature ?? raw.temperature, " C")}</td>
+              <td>${metricValue(event.humidity ?? raw.humidity, "%")}</td>
+              <td>${metricValue(event.light ?? raw.light)}</td>
+              <td>${metricValue(event.rssi ?? raw.rssi)}</td>
+            </tr>
+          `;
+        }).join("");
+      }
+
       function renderEvents() {
         const events = (state.recognition_events || []).filter(isKnownRecognitionEvent).filter(matchesSelectedPerson);
         $("event-count").textContent = `${events.length}`;
@@ -591,6 +771,9 @@
 
       function renderAll() {
         renderDevices();
+        renderCommandDevices();
+        renderCommands();
+        renderTelemetry();
         renderPersonFilter();
         renderPeople();
         renderEvents();
@@ -615,12 +798,56 @@
         const res = await fetch("/api/snapshot");
         const data = await res.json();
         state.devices = data.devices || [];
+        state.commands = data.commands || [];
+        state.telemetry = data.telemetry || [];
         state.people = data.people || [];
         if (state.selectedPerson) {
           await loadRecognitionEvents();
         } else {
           state.recognition_events = data.recognition_events || [];
         }
+        renderAll();
+      }
+
+      async function sendCommand() {
+        const deviceId = $("command-device").value;
+        const commandName = $("command-name").value.trim();
+        const rawPayload = $("command-payload").value.trim();
+        if (!deviceId || !commandName) {
+          $("command-status").textContent = "Missing device or command";
+          return;
+        }
+
+        let payload = {};
+        if (rawPayload) {
+          try {
+            payload = JSON.parse(rawPayload);
+          } catch {
+            $("command-status").textContent = "Payload JSON error";
+            return;
+          }
+        }
+
+        const res = await fetch("/api/commands", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            device_id: deviceId,
+            command: commandName,
+            payload,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          $("command-status").textContent = data.detail?.error || data.error || "Command failed";
+          return;
+        }
+        $("command-status").textContent = `Sent ${data.command.command_id}`;
+        $("command-name").value = "";
+        $("command-payload").value = "";
+        const index = state.commands.findIndex((item) => item.command_id === data.command.command_id);
+        if (index >= 0) state.commands[index] = data.command;
+        else state.commands.unshift(data.command);
         renderAll();
       }
 
@@ -643,6 +870,8 @@
           const message = JSON.parse(event.data);
           if (message.type === "snapshot") {
             state.devices = message.devices || [];
+            state.commands = message.commands || [];
+            state.telemetry = message.telemetry || [];
             state.people = message.people || [];
             if (state.selectedPerson) {
               loadRecognitionEvents()
@@ -658,6 +887,17 @@
             if (index >= 0) state.devices[index] = device;
             else state.devices.unshift(device);
           }
+          if (message.type === "command" || message.type === "command_result") {
+            const command = message.command;
+            const index = state.commands.findIndex((item) => item.command_id === command.command_id);
+            if (index >= 0) state.commands[index] = command;
+            else state.commands.unshift(command);
+            state.commands = state.commands.slice(0, 500);
+          }
+          if (message.type === "telemetry") {
+            state.telemetry.unshift(message.event);
+            state.telemetry = state.telemetry.slice(0, 500);
+          }
           if (message.type === "recognition_event") {
             if (matchesSelectedPerson(message.event)) {
               state.recognition_events.unshift(message.event);
@@ -672,6 +912,9 @@
       }
 
       $("refresh").addEventListener("click", loadSnapshot);
+      $("send-command").addEventListener("click", () => {
+        sendCommand().catch(() => setSocketState("HTTP error", "bad"));
+      });
       $("person-filter").addEventListener("change", (event) => {
         selectPerson(event.target.value).catch(() => setSocketState("HTTP error", "bad"));
       });

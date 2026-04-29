@@ -1,18 +1,24 @@
 # ASDUN Platform Server
 
-这是 `network.md` 阶段 B 的最小平台服务：负责接收设备状态、保存到 SQLite，并通过 REST API + WebSocket 提供给 Web 页面查看。
+`platform_server` 是 ASDUN 的平台后端，负责：
 
-当前先使用 HTTP 上报状态，后续可以把同一套数据库和 WebSocket 推送接到 MQTT Broker。
+- 接收设备在线状态。
+- 接收 Windows 推理服务上报的人脸识别/情绪事件。
+- 接收 ESP32 温湿度等遥测数据。
+- 保存到 SQLite。
+- 给网页通过 REST API 和 WebSocket 展示实时数据。
 
-阶段 B 的目标是：
+当前建议先继续使用 FastAPI，后续 React 前端、云端部署、设备控制命令都可以围绕这套 API 扩展。
+
+云服务器部署说明见：
 
 ```text
-Web 页面可以看到 asdun@asdun 这台树莓派和 asdun-cloud 这台 Windows 推理端是否在线。
+deploy/platform_server/README.md
 ```
 
-## Run
+## 启动
 
-从项目根目录启动：
+从项目根目录运行：
 
 ```powershell
 .\scripts\run_platform_server.ps1
@@ -24,62 +30,84 @@ Web 页面可以看到 asdun@asdun 这台树莓派和 asdun-cloud 这台 Windows
 http://127.0.0.1:9000
 ```
 
-如果树莓派通过 Tailscale 访问 Windows 主机，Pi 端配置使用：
-
-```yaml
-platform_base_url: "http://asdun-cloud:9000"
-```
-
 健康检查：
 
 ```powershell
 curl.exe http://127.0.0.1:9000/health
 ```
 
-## Post Device Status
-
-正常情况下不需要手动模拟：
-
-- Windows 推理服务启动后会自动上报 `asdun-cloud`。
-- Platform Server 会主动探测 `asdun:22`，只要树莓派连上 Tailscale/SSH 可达，`asdun@asdun` 就会显示在线。
-- Raspberry Pi 程序启动后会额外上报 `mode`、`fps`、`cloud_connected` 等运行状态。
-
-手动模拟 Windows 推理服务在线：
-
-```powershell
-.\scripts\post_platform_status.ps1 -Preset cloud
-```
-
-手动模拟 Raspberry Pi 在线：
-
-```powershell
-.\scripts\post_platform_status.ps1 -Preset pi
-```
-
-浏览器打开：
+网页：
 
 ```text
 http://127.0.0.1:9000
 ```
 
-如果两条状态都已上报，页面会显示 `pi-01` 和 `asdun-cloud`。
+## 设备 Token
 
-## API
+本地调试默认不开启 token，所以现有 Pi、Windows、ESP32 不会被拦住。
 
-设备状态上报：
+准备公网部署前，建议开启：
+
+```powershell
+$env:ASDUN_DEVICE_AUTH_ENABLED = "true"
+$env:ASDUN_DEVICE_TOKENS = "pi-01=pi-token,asdun-cloud=cloud-token,esp32-01=esp32-token"
+.\scripts\run_platform_server.ps1
+```
+
+设备上报时带请求头：
+
+```http
+X-ASDUN-Device-Id: esp32-01
+X-ASDUN-Device-Token: esp32-token
+```
+
+也可以用 JSON 格式配置 token：
+
+```powershell
+$env:ASDUN_DEVICE_TOKENS = '{"pi-01":"pi-token","asdun-cloud":"cloud-token","esp32-01":"esp32-token"}'
+```
+
+## 常用 API
+
+读取：
+
+```text
+GET /health
+GET /api/config/public
+GET /api/snapshot
+GET /api/devices
+GET /api/status/latest
+GET /api/people
+GET /api/events/recognition?limit=100
+GET /api/events/recognition?person=yuqin&limit=500
+GET /api/telemetry?device_id=esp32-01&limit=100
+GET /api/commands?device_id=esp32-01&limit=100
+GET /api/commands/pending?device_id=esp32-01
+WebSocket /ws
+```
+
+写入：
+
+```text
+POST /api/status
+POST /api/events/recognition
+POST /api/telemetry
+POST /api/commands
+POST /api/commands/{command_id}/result
+```
+
+## 状态上报
 
 ```http
 POST /api/status
 Content-Type: application/json
 ```
 
-示例：
-
 ```json
 {
   "device_id": "pi-01",
   "role": "raspberry_pi",
-  "display_name": "Raspberry Pi 4",
+  "display_name": "asdun@asdun",
   "online": true,
   "status": {
     "mode": "hybrid",
@@ -90,18 +118,30 @@ Content-Type: application/json
 }
 ```
 
-识别事件上报：
+手动模拟：
+
+```powershell
+.\scripts\post_platform_status.ps1 -Preset pi
+.\scripts\post_platform_status.ps1 -Preset cloud
+```
+
+如果开启 token：
+
+```powershell
+.\scripts\post_platform_status.ps1 -Preset pi -DeviceToken "pi-token"
+```
+
+## 识别事件
 
 ```http
 POST /api/events/recognition
 Content-Type: application/json
 ```
 
-示例：
-
 ```json
 {
   "source_device": "pi-01",
+  "producer_device": "asdun-cloud",
   "track_id": 3,
   "frame_id": 1024,
   "identity": {
@@ -117,22 +157,108 @@ Content-Type: application/json
 }
 ```
 
-常用读取接口：
+Unknown 结果默认不由 Windows 推理服务上报到平台。
 
-```text
-GET /api/snapshot
-GET /api/devices
-GET /api/status/latest
-GET /api/people
-GET /api/events/recognition?limit=100
-GET /api/events/recognition?person=yuqin&limit=500
-WebSocket /ws
+## ESP32 遥测
+
+推荐 ESP32 温湿度使用专门接口：
+
+```http
+POST /api/telemetry
+Content-Type: application/json
 ```
 
-`/api/people` 会按已知识别人员聚合历史事件，并计算每种情绪的出现次数占比：
+```json
+{
+  "device_id": "esp32-01",
+  "role": "esp32",
+  "display_name": "esp32-01",
+  "online": true,
+  "telemetry": {
+    "temperature": 28.4,
+    "humidity": 61.0,
+    "light": 730,
+    "rssi": -52,
+    "uptime_ms": 125000
+  }
+}
+```
+
+平台会同时：
+
+- 保存一条 telemetry 历史记录。
+- 更新 Devices 表里的 `esp32-01` 最新状态。
+- 通过 WebSocket 推送到网页。
+
+## 控制命令
+
+平台支持命令队列：
+
+```text
+Web / API 创建命令 -> 设备轮询 pending 命令 -> 设备执行 -> 设备回传结果
+```
+
+创建命令：
+
+```http
+POST /api/commands
+Content-Type: application/json
+```
+
+```json
+{
+  "device_id": "esp32-01",
+  "command": "set_mode",
+  "payload": {
+    "mode": "test"
+  }
+}
+```
+
+设备轮询：
+
+```http
+GET /api/commands/pending?device_id=esp32-01&limit=10
+```
+
+设备回传结果：
+
+```http
+POST /api/commands/{command_id}/result
+Content-Type: application/json
+```
+
+```json
+{
+  "device_id": "esp32-01",
+  "ok": true,
+  "message": "done",
+  "result": {
+    "mode": "test"
+  }
+}
+```
+
+本地模拟完整流程：
+
+```powershell
+.\scripts\test_platform_command_flow.ps1 -PlatformUrl http://127.0.0.1:9000 -DeviceId esp32-01
+```
+
+如果设置了 `ASDUN_ADMIN_TOKEN`，创建命令时需要请求头：
+
+```http
+X-ASDUN-Admin-Token: your-admin-token
+```
+
+## 人员统计
+
+`/api/people` 只统计已知人员，不统计 Unknown。
+
+情绪占比现在按出现次数计算：
 
 ```text
 emotion percent = emotion event count / total known recognition events for that person * 100
 ```
 
-Dashboard 的 People 表可以点选人员，或使用人员下拉框筛选 Recognition 明细。
+例如 yuqin 一共出现 10 次，其中 Happy 出现 3 次，则 Happy 为 30%。

@@ -1,0 +1,18 @@
+services:
+  platform:
+    build:
+      context: ../../platform_server
+    container_name: asdun-platform
+    restart: unless-stopped
+    env_file:
+      - ./platform.env
+    environment:
+      ASDUN_PLATFORM_DB: /app/data/asdun_platform.sqlite
+      ASDUN_PLATFORM_ONLINE_TTL_MS: 30000
+    ports:
+      - "9000:9000"
+    volumes:
+      - platform_data:/app/data
+
+volumes:
+  platform_data:

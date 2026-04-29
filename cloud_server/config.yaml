@@ -54,6 +54,7 @@ platform:
   enabled: true
   base_url: "http://127.0.0.1:9000"
   device_id: "asdun-cloud"
+  device_token: ""
   role: "inference_server"
   display_name: "asdun-cloud"
   status_interval_ms: 5000

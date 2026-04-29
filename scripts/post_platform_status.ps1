@@ -2,6 +2,7 @@ param(
   [string]$PlatformUrl = "http://127.0.0.1:9000",
   [ValidateSet("pi", "cloud")]
   [string]$Preset = "pi",
+  [string]$DeviceToken = "",
   [switch]$Offline
 )
 
@@ -39,4 +40,12 @@ if ($Preset -eq "cloud") {
 
 $body = $payload | ConvertTo-Json -Depth 8
 $url = "$($PlatformUrl.TrimEnd('/'))/api/status"
-Invoke-RestMethod -Uri $url -Method Post -ContentType "application/json" -Body $body
+$headers = @{
+  "Content-Type" = "application/json"
+  "X-ASDUN-Device-Id" = $payload.device_id
+}
+if ($DeviceToken) {
+  $headers["X-ASDUN-Device-Token"] = $DeviceToken
+}
+
+Invoke-RestMethod -Uri $url -Method Post -Headers $headers -Body $body

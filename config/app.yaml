@@ -69,6 +69,7 @@ cloud_debug: false
 platform_enabled: true
 platform_base_url: "http://asdun-cloud:9000"
 platform_device_id: "pi-01"
+platform_device_token: ""
 platform_role: "raspberry_pi"
 platform_display_name: "asdun@asdun"
 platform_status_interval_ms: 5000

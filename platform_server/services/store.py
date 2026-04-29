@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import time
+import uuid
 from pathlib import Path
 from threading import Lock
 from typing import Any
@@ -76,6 +77,41 @@ class SQLiteStore:
 
                 CREATE INDEX IF NOT EXISTS idx_recognition_events_ts
                   ON recognition_events(ts_ms DESC);
+
+                CREATE TABLE IF NOT EXISTS telemetry (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  device_id TEXT NOT NULL,
+                  telemetry_json TEXT NOT NULL,
+                  temperature REAL,
+                  humidity REAL,
+                  light REAL,
+                  rssi REAL,
+                  ts_ms INTEGER NOT NULL,
+                  received_ms INTEGER NOT NULL
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_telemetry_device_ts
+                  ON telemetry(device_id, ts_ms DESC);
+
+                CREATE TABLE IF NOT EXISTS command_logs (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  command_id TEXT NOT NULL UNIQUE,
+                  device_id TEXT NOT NULL,
+                  command TEXT NOT NULL,
+                  payload_json TEXT NOT NULL DEFAULT '{}',
+                  status TEXT NOT NULL DEFAULT 'pending',
+                  result_json TEXT NOT NULL DEFAULT '{}',
+                  error TEXT NOT NULL DEFAULT '',
+                  created_ms INTEGER NOT NULL,
+                  updated_ms INTEGER NOT NULL,
+                  completed_ms INTEGER
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_command_logs_device_status
+                  ON command_logs(device_id, status, created_ms DESC);
+
+                CREATE INDEX IF NOT EXISTS idx_command_logs_created
+                  ON command_logs(created_ms DESC);
                 """
             )
             self._conn.commit()
@@ -344,11 +380,216 @@ class SQLiteStore:
         people.sort(key=lambda item: (-(item["last_seen_ms"] or 0), item["name"]))
         return people
 
+    def insert_telemetry(self, payload: dict[str, Any]) -> dict[str, Any]:
+        device_id = str(payload.get("device_id", "")).strip()
+        if not device_id:
+            raise ValueError("device_id is required")
+
+        received_ms = now_ms()
+        ts_ms = int(payload.get("ts_ms") or received_ms)
+        telemetry = payload.get("telemetry") if isinstance(payload.get("telemetry"), dict) else None
+        if telemetry is None and isinstance(payload.get("status"), dict):
+            telemetry = payload.get("status")
+        if telemetry is None:
+            ignored = {
+                "device_id",
+                "role",
+                "device_role",
+                "display_name",
+                "online",
+                "ts_ms",
+                "metadata",
+                "status",
+                "device_token",
+            }
+            telemetry = {key: value for key, value in payload.items() if key not in ignored}
+        telemetry = dict(telemetry)
+        telemetry_json = json.dumps(telemetry, ensure_ascii=False, separators=(",", ":"))
+
+        with self._lock:
+            cur = self._conn.execute(
+                """
+                INSERT INTO telemetry(
+                  device_id, telemetry_json, temperature, humidity, light, rssi, ts_ms, received_ms
+                )
+                VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    device_id,
+                    telemetry_json,
+                    _float_or_none(telemetry.get("temperature")),
+                    _float_or_none(telemetry.get("humidity")),
+                    _float_or_none(telemetry.get("light")),
+                    _float_or_none(telemetry.get("rssi")),
+                    ts_ms,
+                    received_ms,
+                ),
+            )
+            self._conn.commit()
+            event_id = int(cur.lastrowid)
+
+        status_payload = {
+            "device_id": device_id,
+            "role": payload.get("role") or payload.get("device_role") or "esp32",
+            "display_name": payload.get("display_name") or device_id,
+            "online": payload.get("online", True),
+            "merge_status": True,
+            "status": {
+                **telemetry,
+                "telemetry_seen_ms": received_ms,
+            },
+            "metadata": payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {},
+            "ts_ms": ts_ms,
+        }
+        self.upsert_status(status_payload)
+        return self.get_telemetry_event(event_id)
+
+    def get_telemetry_event(self, event_id: int) -> dict[str, Any]:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT * FROM telemetry WHERE id = ?",
+                (event_id,),
+            ).fetchone()
+        if row is None:
+            raise KeyError(event_id)
+        return self._telemetry_row_to_dict(row)
+
+    def list_telemetry(self, device_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
+        safe_limit = max(1, min(1000, int(limit)))
+        clean_device_id = str(device_id or "").strip()
+        with self._lock:
+            if clean_device_id:
+                rows = self._conn.execute(
+                    """
+                    SELECT * FROM telemetry
+                    WHERE device_id = ?
+                    ORDER BY ts_ms DESC, id DESC
+                    LIMIT ?
+                    """,
+                    (clean_device_id, safe_limit),
+                ).fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM telemetry ORDER BY ts_ms DESC, id DESC LIMIT ?",
+                    (safe_limit,),
+                ).fetchall()
+        return [self._telemetry_row_to_dict(row) for row in rows]
+
+    def create_command(self, payload: dict[str, Any]) -> dict[str, Any]:
+        device_id = str(payload.get("device_id", "")).strip()
+        command = str(payload.get("command") or payload.get("name") or "").strip()
+        if not device_id:
+            raise ValueError("device_id is required")
+        if not command:
+            raise ValueError("command is required")
+
+        command_id = str(payload.get("command_id") or payload.get("request_id") or "").strip()
+        if not command_id:
+            command_id = f"cmd-{now_ms()}-{uuid.uuid4().hex[:8]}"
+
+        command_payload = payload.get("payload")
+        if not isinstance(command_payload, dict):
+            command_payload = {}
+            for key in ("value", "mode", "target", "duration_ms"):
+                if key in payload:
+                    command_payload[key] = payload[key]
+
+        timestamp_ms = now_ms()
+        payload_json = json.dumps(command_payload, ensure_ascii=False, separators=(",", ":"))
+        with self._lock:
+            try:
+                self._conn.execute(
+                    """
+                    INSERT INTO command_logs(
+                      command_id, device_id, command, payload_json, status,
+                      result_json, error, created_ms, updated_ms, completed_ms
+                    )
+                    VALUES(?, ?, ?, ?, 'pending', '{}', '', ?, ?, NULL)
+                    """,
+                    (command_id, device_id, command, payload_json, timestamp_ms, timestamp_ms),
+                )
+                self._conn.commit()
+            except sqlite3.IntegrityError as exc:
+                raise ValueError("command_id already exists") from exc
+        return self.get_command(command_id)
+
+    def get_command(self, command_id: str) -> dict[str, Any]:
+        clean_id = str(command_id or "").strip()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT * FROM command_logs WHERE command_id = ?",
+                (clean_id,),
+            ).fetchone()
+        if row is None:
+            raise KeyError(clean_id)
+        return self._command_row_to_dict(row)
+
+    def list_commands(
+        self,
+        device_id: str | None = None,
+        status: str | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        safe_limit = max(1, min(500, int(limit)))
+        clean_device_id = str(device_id or "").strip()
+        clean_status = str(status or "").strip()
+        clauses: list[str] = []
+        params: list[Any] = []
+        if clean_device_id:
+            clauses.append("device_id = ?")
+            params.append(clean_device_id)
+        if clean_status:
+            clauses.append("status = ?")
+            params.append(clean_status)
+
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        sql = f"SELECT * FROM command_logs {where} ORDER BY created_ms DESC, id DESC LIMIT ?"
+        params.append(safe_limit)
+        with self._lock:
+            rows = self._conn.execute(sql, tuple(params)).fetchall()
+        return [self._command_row_to_dict(row) for row in rows]
+
+    def list_pending_commands(self, device_id: str, limit: int = 10) -> list[dict[str, Any]]:
+        clean_device_id = str(device_id or "").strip()
+        if not clean_device_id:
+            raise ValueError("device_id is required")
+        return self.list_commands(device_id=clean_device_id, status="pending", limit=limit)
+
+    def complete_command(self, command_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        clean_id = str(command_id or "").strip()
+        if not clean_id:
+            raise ValueError("command_id is required")
+
+        ok = bool(payload.get("ok", True))
+        status = "completed" if ok else "failed"
+        result = payload.get("result") if isinstance(payload.get("result"), dict) else {}
+        if "message" in payload:
+            result.setdefault("message", payload.get("message"))
+        error = str(payload.get("error") or ("" if ok else payload.get("message") or "command failed")).strip()
+        timestamp_ms = now_ms()
+        result_json = json.dumps(result, ensure_ascii=False, separators=(",", ":"))
+
+        with self._lock:
+            cur = self._conn.execute(
+                """
+                UPDATE command_logs
+                SET status = ?, result_json = ?, error = ?, updated_ms = ?, completed_ms = ?
+                WHERE command_id = ?
+                """,
+                (status, result_json, error, timestamp_ms, timestamp_ms, clean_id),
+            )
+            if cur.rowcount == 0:
+                raise KeyError(clean_id)
+            self._conn.commit()
+        return self.get_command(clean_id)
+
     def snapshot(self) -> dict[str, Any]:
         return {
             "devices": self.list_devices(),
             "people": self.list_people_profiles(),
             "recognition_events": self.list_recognition_events(limit=50),
+            "telemetry": self.list_telemetry(limit=50),
+            "commands": self.list_commands(limit=50),
             "server_time_ms": now_ms(),
         }
 
@@ -403,6 +644,36 @@ class SQLiteStore:
             "received_ms": row["received_ms"],
         }
 
+    @staticmethod
+    def _telemetry_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+        return {
+            "id": row["id"],
+            "device_id": row["device_id"],
+            "telemetry": _loads_json(row["telemetry_json"] or "{}"),
+            "temperature": row["temperature"],
+            "humidity": row["humidity"],
+            "light": row["light"],
+            "rssi": row["rssi"],
+            "ts_ms": row["ts_ms"],
+            "received_ms": row["received_ms"],
+        }
+
+    @staticmethod
+    def _command_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+        return {
+            "id": row["id"],
+            "command_id": row["command_id"],
+            "device_id": row["device_id"],
+            "command": row["command"],
+            "payload": _loads_json(row["payload_json"] or "{}"),
+            "status": row["status"],
+            "result": _loads_json(row["result_json"] or "{}"),
+            "error": row["error"],
+            "created_ms": row["created_ms"],
+            "updated_ms": row["updated_ms"],
+            "completed_ms": row["completed_ms"],
+        }
+
 
 def _loads_json(value: str) -> dict[str, Any]:
     try:
@@ -418,6 +689,13 @@ def _clamp_pct(value: Any) -> float:
     except (TypeError, ValueError):
         return 0.0
     return max(0.0, min(100.0, pct))
+
+
+def _float_or_none(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _fresh_bool(status: dict[str, Any], value_key: str, seen_key: str, now: int, ttl_ms: int) -> bool | None:
@@ -472,6 +750,10 @@ def _derive_signals(role: str, online: bool, status: dict[str, Any], now: int, t
             inference = _signal("warn", "Partial", provider)
         else:
             inference = _signal("bad", "Offline")
+    elif role == "esp32":
+        app = _signal("ok", "Reporting") if online else _signal("bad", "Stopped")
+        cloud = _signal("muted", "-", "")
+        inference = _signal("muted", "-", "")
     else:
         app = _signal("warn", "Unknown")
         cloud = _signal("muted", "-", "")

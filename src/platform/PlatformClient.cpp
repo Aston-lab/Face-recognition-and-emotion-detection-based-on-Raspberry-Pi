@@ -59,7 +59,7 @@ std::string buildPayload(const PlatformClientConfig& config, bool online, const 
   out << "\"device_id\":\"" << jsonEscape(config.device_id) << "\",";
   out << "\"role\":\"" << jsonEscape(config.role) << "\",";
   out << "\"display_name\":\"" << jsonEscape(config.display_name) << "\",";
-  out << "\"online\":true,";
+  out << "\"online\":" << jsonBool(online) << ",";
   out << "\"merge_status\":true,";
   out << "\"status\":{";
   out << "\"app\":\"asdun_access\",";
@@ -184,8 +184,14 @@ bool PlatformClient::postStatus(bool online, const PlatformStatus& status) const
 
   const std::string payload = buildPayload(config_, online, status);
   const std::string url = statusUrl();
+  const std::string device_id_header = "X-ASDUN-Device-Id: " + config_.device_id;
+  const std::string device_token_header = "X-ASDUN-Device-Token: " + config_.device_token;
   curl_slist* headers = nullptr;
   headers = curl_slist_append(headers, "Content-Type: application/json");
+  headers = curl_slist_append(headers, device_id_header.c_str());
+  if (!config_.device_token.empty()) {
+    headers = curl_slist_append(headers, device_token_header.c_str());
+  }
 
   curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);

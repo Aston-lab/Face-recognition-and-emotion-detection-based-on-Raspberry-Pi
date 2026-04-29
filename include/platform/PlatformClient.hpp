@@ -11,6 +11,7 @@ struct PlatformClientConfig {
   bool enabled{false};
   std::string base_url{"http://127.0.0.1:9000"};
   std::string device_id{"pi-01"};
+  std::string device_token{};
   std::string role{"raspberry_pi"};
   std::string display_name{"asdun@asdun"};
   int status_interval_ms{5000};

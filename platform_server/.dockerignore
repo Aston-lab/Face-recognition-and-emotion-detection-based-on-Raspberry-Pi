@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.log
+data/*.sqlite
+data/*.sqlite-shm
+data/*.sqlite-wal
+platform_stdout.log
+platform_stderr.log

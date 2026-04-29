@@ -69,6 +69,7 @@ class PlatformConfig:
     enabled: bool
     base_url: str
     device_id: str
+    device_token: str
     role: str
     display_name: str
     status_interval_ms: int
@@ -164,6 +165,7 @@ def load_config() -> CloudConfig:
             enabled=bool(platform.get("enabled", False)),
             base_url=str(platform.get("base_url", "http://127.0.0.1:9000")).rstrip("/"),
             device_id=str(platform.get("device_id", "asdun-cloud")),
+            device_token=str(platform.get("device_token", "")),
             role=str(platform.get("role", "inference_server")),
             display_name=str(platform.get("display_name", "asdun-cloud")),
             status_interval_ms=max(1000, int(platform.get("status_interval_ms", 5000))),

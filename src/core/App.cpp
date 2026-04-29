@@ -416,6 +416,8 @@ bool App::loadConfig() {
         config_.platform.base_url = value;
       } else if (key == "platform_device_id") {
         config_.platform.device_id = value;
+      } else if (key == "platform_device_token") {
+        config_.platform.device_token = value;
       } else if (key == "platform_role") {
         config_.platform.role = value;
       } else if (key == "platform_display_name") {
