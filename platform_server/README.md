@@ -1,5 +1,15 @@
 # ASDUN Platform Server
 
+## 目录定位
+
+这个目录是 Platform Server 的程序本体，包含 FastAPI 后端、网页静态文件、依赖文件和 Docker 镜像构建文件。
+
+云服务器怎么启动、怎么配 Nginx、怎么配 systemd、怎么写环境变量，统一放在：
+
+```text
+deploy/platform_server/
+```
+
 `platform_server` 是 ASDUN 的平台后端，负责：
 
 - 接收设备在线状态。
@@ -52,6 +62,12 @@ http://127.0.0.1:9000
 $env:ASDUN_DEVICE_AUTH_ENABLED = "true"
 $env:ASDUN_DEVICE_TOKENS = "pi-01=pi-token,asdun-cloud=cloud-token,esp32-01=esp32-token"
 .\scripts\run_platform_server.ps1
+```
+
+公网云服务器通常不能直接访问你的 Tailscale 主机名 `asdun`，建议在云端环境变量里关闭主动探测：
+
+```text
+ASDUN_PROBE_PI_ENABLED=false
 ```
 
 设备上报时带请求头：

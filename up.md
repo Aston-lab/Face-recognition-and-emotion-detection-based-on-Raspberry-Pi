@@ -16,8 +16,10 @@
 - 新增控制命令队列 API：`POST /api/commands`、`GET /api/commands/pending`、`POST /api/commands/{command_id}/result`。
 - Dashboard 新增 Commands 区域，可以创建命令并查看执行状态。
 - 新增 `scripts/test_platform_command_flow.ps1`，用于模拟完整命令下发和回传流程。
+- ESP32 对接文档新增命令轮询和结果回传流程。
+- 新增 `examples/esp32_platform_client/esp32_platform_client.ino`，给 ESP32 同学参考温湿度上传和命令轮询。
 
-下一步建议继续做：把 Pi/ESP32 端接入命令轮询并执行具体动作、设备注册页面、React 前端重构。
+下一步建议继续做：让 ESP32 真机按示例接入轮询、给 Pi 端补命令轮询执行、设备注册页面、React 前端重构。
 
 ## 1. 当前结论
 

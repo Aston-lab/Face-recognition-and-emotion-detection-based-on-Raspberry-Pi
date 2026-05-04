@@ -1,5 +1,22 @@
 # ASDUN Platform Server 云端部署指南
 
+## 目录定位
+
+这个目录只放“部署相关”的文件，例如 Docker Compose、systemd、Nginx 和环境变量模板。
+
+真正的 Platform Server 程序代码在：
+
+```text
+platform_server/
+```
+
+所以这两个目录不是重复关系：
+
+```text
+platform_server/          程序本体
+deploy/platform_server/   云服务器部署配置
+```
+
 这份文档对应 `up.md` 的“路线一”：
 
 ```text
@@ -63,6 +80,7 @@ esp32-01
 ASDUN_DEVICE_AUTH_ENABLED=true
 ASDUN_DEVICE_TOKENS=pi-01=pi-token,asdun-cloud=cloud-token,esp32-01=esp32-token
 ASDUN_ADMIN_TOKEN=admin-token
+ASDUN_PROBE_PI_ENABLED=false
 ASDUN_PLATFORM_ONLINE_TTL_MS=30000
 ```
 
@@ -105,6 +123,7 @@ nano platform.env
 ASDUN_DEVICE_AUTH_ENABLED=true
 ASDUN_DEVICE_TOKENS=pi-01=pi-token,asdun-cloud=cloud-token,esp32-01=esp32-token
 ASDUN_ADMIN_TOKEN=admin-token
+ASDUN_PROBE_PI_ENABLED=false
 ASDUN_PLATFORM_ONLINE_TTL_MS=30000
 ```
 

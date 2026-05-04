@@ -725,12 +725,14 @@ def _derive_signals(role: str, online: bool, status: dict[str, Any], now: int, t
     inference_ready = bool(status.get("emotion_ready")) and bool(status.get("identity_ready"))
     provider = str(status.get("provider") or status.get("device") or "")
 
-    network = _signal("ok", "Online", str(status.get("probe_host") or "")) if network_online else _signal("bad", "Offline")
+    probe_detail = str(status.get("probe_host") or "")
+    network = _signal("ok", "Online", probe_detail) if network_online else _signal("bad", "Offline")
 
     if role == "raspberry_pi":
         if app_online is True:
             mode = str(status.get("mode") or "running")
             app = _signal("ok", "Running", mode)
+            network = _signal("ok", "Online", "reported by app")
         elif app_online is False:
             app = _signal("bad", "Stopped")
         else:

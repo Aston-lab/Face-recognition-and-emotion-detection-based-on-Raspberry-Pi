@@ -211,7 +211,17 @@ bool PlatformClient::postStatus(bool online, const PlatformStatus& status) const
   curl_easy_cleanup(curl);
 
   const bool ok = code == CURLE_OK && http_code >= 200 && http_code < 300;
+  bool should_log = false;
   if (!ok && config_.debug) {
+    const auto now = std::chrono::steady_clock::now();
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (last_error_log_time_.time_since_epoch().count() == 0 ||
+        now - last_error_log_time_ >= std::chrono::seconds(30)) {
+      last_error_log_time_ = now;
+      should_log = true;
+    }
+  }
+  if (should_log) {
     std::cerr << "[PlatformClient] status post failed url=" << url
               << " curl=" << curl_easy_strerror(code)
               << " http=" << http_code << std::endl;

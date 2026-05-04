@@ -300,7 +300,103 @@ void loop() {
 }
 ```
 
-## 8. 常见问题
+## 8. 控制命令轮询
+
+平台现在支持命令队列。ESP32 不需要暴露端口，也不需要公网 IP；它只要主动轮询平台即可：
+
+```text
+Web / API 创建命令
+ESP32 GET /api/commands/pending?device_id=esp32-01
+ESP32 执行命令
+ESP32 POST /api/commands/{command_id}/result
+```
+
+ESP32 轮询待执行命令：
+
+```http
+GET /api/commands/pending?device_id=esp32-01&limit=5
+X-ASDUN-Device-Id: esp32-01
+X-ASDUN-Device-Token: esp32-token
+```
+
+返回示例：
+
+```json
+{
+  "ok": true,
+  "commands": [
+    {
+      "command_id": "cmd-001",
+      "device_id": "esp32-01",
+      "command": "set_mode",
+      "payload": {
+        "mode": "test"
+      },
+      "status": "pending"
+    }
+  ]
+}
+```
+
+ESP32 执行后回传结果：
+
+```http
+POST /api/commands/cmd-001/result
+Content-Type: application/json
+X-ASDUN-Device-Id: esp32-01
+X-ASDUN-Device-Token: esp32-token
+```
+
+```json
+{
+  "device_id": "esp32-01",
+  "ok": true,
+  "message": "mode updated",
+  "result": {
+    "mode": "test"
+  }
+}
+```
+
+第一版建议先支持两个命令：
+
+| 命令 | payload | ESP32 行为 |
+|---|---|---|
+| `ping` | `{}` | 回传 `pong`，用于检查命令链路 |
+| `set_mode` | `{"mode":"test"}` | 保存当前模式，回传 `mode updated` |
+
+完整 Arduino 示例已放在：
+
+```text
+examples/esp32_platform_client/esp32_platform_client.ino
+```
+
+这个示例包含：
+
+- 周期性 POST `/api/telemetry`。
+- 周期性 GET `/api/commands/pending`。
+- 处理 `ping` 和 `set_mode`。
+- POST `/api/commands/{command_id}/result` 回传执行结果。
+
+需要额外安装 Arduino 库：
+
+```text
+ArduinoJson
+```
+
+电脑端可以先模拟完整命令流程：
+
+```powershell
+.\scripts\test_platform_command_flow.ps1 `
+  -PlatformUrl http://8.163.47.15:9000 `
+  -DeviceId esp32-01 `
+  -AdminToken your-admin-token `
+  -DeviceToken your-esp32-token
+```
+
+等 ESP32 真机接入轮询后，网页创建的命令就不再由脚本模拟完成，而是由 ESP32 自己完成。
+
+## 9. 常见问题
 
 ESP32 访问不了平台时检查：
 

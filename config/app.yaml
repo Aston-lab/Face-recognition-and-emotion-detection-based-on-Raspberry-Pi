@@ -67,9 +67,9 @@ cloud_debug: false
 # Platform server status reporting
 # The platform server is expected to run on the Windows/Tailscale host for Stage B.
 platform_enabled: true
-platform_base_url: "http://asdun-cloud:9000"
+platform_base_url: "http://8.163.47.15:9000"
 platform_device_id: "pi-01"
-platform_device_token: ""
+platform_device_token: "6ac0e5effcf38864e3b7e8cd5883f452"
 platform_role: "raspberry_pi"
 platform_display_name: "asdun@asdun"
 platform_status_interval_ms: 5000

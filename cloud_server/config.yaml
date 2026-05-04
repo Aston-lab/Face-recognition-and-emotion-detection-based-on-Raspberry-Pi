@@ -52,9 +52,9 @@ gallery:
 
 platform:
   enabled: true
-  base_url: "http://127.0.0.1:9000"
+  base_url: "http://8.163.47.15:9000"
   device_id: "asdun-cloud"
-  device_token: ""
+  device_token: "7e521f53fb1e29b2c76471ed0a4d64ee"
   role: "inference_server"
   display_name: "asdun-cloud"
   status_interval_ms: 5000

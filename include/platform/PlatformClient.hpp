@@ -1,6 +1,7 @@
 #pragma once
 
 #include <condition_variable>
+#include <chrono>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -51,6 +52,7 @@ class PlatformClient {
   std::condition_variable cv_{};
   PlatformStatus status_{};
   std::thread worker_{};
+  mutable std::chrono::steady_clock::time_point last_error_log_time_{};
   bool running_{false};
 };
 
