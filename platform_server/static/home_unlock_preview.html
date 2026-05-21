@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ASDUN Smart Home</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --page-bg: #f4f7fb;
+        --text: #18202e;
+        --muted: #657085;
+        --rim: rgba(255, 255, 255, 0.42);
+        --blue: #6b73ff;
+        --blue-deep: #2458d3;
+        --mint: #dff2eb;
+        --cream: #f7f9fd;
+        --ink: #201d1f;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+        margin: 0;
+      }
+
+      body {
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+        padding: 18px;
+        background:
+          radial-gradient(circle at 16% 10%, rgba(107, 124, 255, 0.22), transparent 32%),
+          radial-gradient(circle at 86% 13%, rgba(57, 167, 109, 0.16), transparent 30%),
+          radial-gradient(circle at 54% 98%, rgba(218, 209, 198, 0.28), transparent 36%),
+          var(--page-bg);
+        font-family: Poppins, "Aptos Display", "Century Gothic", "Microsoft YaHei", Arial, sans-serif;
+        letter-spacing: 0;
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .phone {
+        position: relative;
+        width: min(386px, calc(100vw - 24px));
+        aspect-ratio: 392 / 760;
+        min-height: 626px;
+        overflow: hidden;
+        border: 4px solid rgba(255, 255, 255, 0.24);
+        border-radius: 48px;
+        background:
+          radial-gradient(circle at 22% 7%, rgba(107, 124, 255, 0.22), transparent 30%),
+          radial-gradient(circle at 82% 12%, rgba(57, 167, 109, 0.16), transparent 28%),
+          radial-gradient(circle at 55% 70%, rgba(218, 209, 198, 0.24), transparent 36%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(248, 250, 254, 0.62));
+        box-shadow:
+          inset 0 0 0 1px rgba(255, 255, 255, 0.88),
+          inset 0 18px 38px rgba(255, 255, 255, 0.52),
+          inset 0 -20px 42px rgba(209, 216, 230, 0.32),
+          0 24px 62px rgba(24, 32, 46, 0.14),
+          0 3px 0 rgba(255, 255, 255, 0.72);
+        backdrop-filter: blur(22px) saturate(1.2);
+        -webkit-backdrop-filter: blur(22px) saturate(1.2);
+      }
+
+      .phone::before {
+        content: "";
+        position: absolute;
+        inset: 13px;
+        pointer-events: none;
+        border-radius: 38px;
+        background:
+          linear-gradient(105deg, rgba(255, 255, 255, 0.58), transparent 18% 82%, rgba(255, 255, 255, 0.42)),
+          radial-gradient(circle at 50% 8%, rgba(255, 255, 255, 0.62), transparent 34%);
+        box-shadow:
+          inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+          inset 0 24px 36px rgba(255, 255, 255, 0.36),
+          inset 0 -38px 48px rgba(231, 236, 248, 0.38);
+        mix-blend-mode: screen;
+      }
+
+      .phone::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        border-radius: 45px;
+        background:
+          linear-gradient(90deg, rgba(255, 255, 255, 0.58), transparent 5% 95%, rgba(255, 255, 255, 0.48)),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.26), transparent 18% 82%, rgba(255, 255, 255, 0.2)),
+          radial-gradient(circle at 50% 95%, rgba(255, 255, 255, 0.38), transparent 34%);
+      }
+
+      .content {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-rows: minmax(362px, 1fr) auto auto;
+        height: 100%;
+        padding: 26px 24px 18px;
+      }
+
+      .art {
+        align-self: end;
+        width: 100%;
+        min-height: 372px;
+        margin-top: -6px;
+      }
+
+      .copy {
+        margin-top: 0;
+        text-align: center;
+      }
+
+      h1 {
+        margin: 0;
+        color: var(--text);
+        font-size: clamp(39px, 9vw, 48px);
+        font-weight: 500;
+        line-height: 1.17;
+        text-shadow: 0 8px 28px rgba(101, 112, 133, 0.16);
+      }
+
+      p {
+        width: min(292px, 100%);
+        margin: 14px auto 0;
+        color: var(--muted);
+        font-size: clamp(14px, 3.2vw, 16px);
+        font-weight: 500;
+        line-height: 1.5;
+      }
+
+      .unlock-panel {
+        position: relative;
+        display: grid;
+        justify-items: center;
+        min-height: 136px;
+        margin-top: 34px;
+        padding-top: 25px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.78);
+        border-bottom: 0;
+        border-radius: 42px 42px 0 0;
+        background:
+          radial-gradient(circle at 50% 105%, rgba(255, 255, 255, 0.76), transparent 37%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.66), rgba(255, 255, 255, 0.34));
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.86),
+          inset 0 -36px 42px rgba(237, 242, 252, 0.45),
+          0 -18px 42px rgba(101, 112, 133, 0.08);
+        backdrop-filter: blur(18px) saturate(1.2);
+        -webkit-backdrop-filter: blur(18px) saturate(1.2);
+      }
+
+      .unlock-panel::before,
+      .unlock-panel::after {
+        content: "";
+        position: absolute;
+        bottom: -70px;
+        width: 172px;
+        height: 162px;
+        border: 1px solid rgba(101, 112, 133, 0.18);
+        border-radius: 50%;
+      }
+
+      .unlock-panel::before {
+        left: -26px;
+        border-left-color: transparent;
+        border-bottom-color: transparent;
+      }
+
+      .unlock-panel::after {
+        right: -26px;
+        border-right-color: transparent;
+        border-bottom-color: transparent;
+      }
+
+      .hint {
+        color: #657085;
+        font-size: 15px;
+        font-weight: 500;
+      }
+
+      .password-form {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        width: min(286px, 100%);
+        margin-top: 18px;
+      }
+
+      .password-input {
+        min-width: 0;
+        height: 46px;
+        border: 1px solid rgba(201, 211, 231, 0.88);
+        border-radius: 999px;
+        outline: none;
+        background: rgba(255, 255, 255, 0.86);
+        color: var(--text);
+        padding: 0 18px;
+        font-size: 15px;
+        font-weight: 700;
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.92),
+          0 10px 22px rgba(24, 32, 46, 0.08);
+      }
+
+      .password-input:focus {
+        border-color: rgba(92, 124, 255, 0.68);
+        box-shadow:
+          0 0 0 4px rgba(92, 124, 255, 0.12),
+          inset 0 1px 0 rgba(255, 255, 255, 0.92),
+          0 10px 22px rgba(24, 32, 46, 0.08);
+      }
+
+      .enter-button {
+        display: inline-grid;
+        place-items: center;
+        height: 46px;
+        min-width: 72px;
+        border: 0;
+        border-radius: 999px;
+        background: linear-gradient(145deg, #6b7cff, #8bb5ff);
+        color: #ffffff;
+        cursor: pointer;
+        font-weight: 900;
+        box-shadow:
+          0 12px 24px rgba(36, 88, 211, 0.18),
+          inset 0 1px 0 rgba(255, 255, 255, 0.32);
+        transition: transform 160ms ease, box-shadow 160ms ease;
+      }
+
+      .enter-button:hover {
+        transform: translateY(-1px);
+        box-shadow:
+          0 16px 28px rgba(36, 88, 211, 0.22),
+          inset 0 1px 0 rgba(255, 255, 255, 0.32);
+      }
+
+      .password-status {
+        position: relative;
+        z-index: 1;
+        min-height: 18px;
+        margin-top: 10px;
+        color: #657085;
+        font-size: 12px;
+        font-weight: 700;
+        text-align: center;
+      }
+
+      .password-status.error {
+        color: #b42318;
+      }
+
+
+      .robot-svg {
+        display: block;
+        width: 100%;
+        height: auto;
+        overflow: visible;
+        transform: scale(1.04);
+        transform-origin: center bottom;
+        filter:
+          drop-shadow(0 18px 24px rgba(0, 0, 0, 0.38))
+          drop-shadow(0 3px 8px rgba(107, 124, 255, 0.16));
+      }
+
+      @media (max-width: 380px) {
+        body {
+          padding: 14px;
+        }
+
+        .phone {
+          border-radius: 42px;
+          min-height: 604px;
+        }
+
+        .content {
+          padding: 24px 20px 16px;
+          grid-template-rows: minmax(326px, 1fr) auto auto;
+        }
+
+        .art {
+          min-height: 330px;
+        }
+
+        .unlock-panel {
+          min-height: 128px;
+          margin-top: 28px;
+        }
+
+        .password-form {
+          grid-template-columns: 1fr;
+          width: min(240px, 100%);
+        }
+      }
+
+      @media (max-height: 760px) {
+        .phone {
+          width: min(360px, calc(100vw - 24px));
+          min-height: 594px;
+        }
+
+        .content {
+          grid-template-rows: minmax(312px, 1fr) auto auto;
+        }
+
+        .art {
+          min-height: 315px;
+        }
+
+        h1 {
+          font-size: clamp(35px, 8.6vw, 46px);
+        }
+
+        p {
+          margin-top: 10px;
+        }
+
+        .unlock-panel {
+          min-height: 134px;
+          margin-top: 24px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="phone" aria-label="智能家居进入页">
+      <div class="content">
+        <section class="art" aria-hidden="true">
+          <svg class="robot-svg" viewBox="0 0 380 390" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="plateGlow" cx="50%" cy="50%" r="62%">
+                <stop offset="0" stop-color="#cfd8ff" stop-opacity="0.82" />
+                <stop offset="0.62" stop-color="#eef4ff" stop-opacity="0.72" />
+                <stop offset="1" stop-color="#ffffff" stop-opacity="0.24" />
+              </radialGradient>
+              <radialGradient id="metal" cx="37%" cy="25%" r="82%">
+                <stop offset="0" stop-color="#ffffff" />
+                <stop offset="0.34" stop-color="#f3f7ff" />
+                <stop offset="0.72" stop-color="#c7d0e2" />
+                <stop offset="1" stop-color="#8e99ad" />
+              </radialGradient>
+              <radialGradient id="bodyMetal" cx="36%" cy="20%" r="84%">
+                <stop offset="0" stop-color="#ffffff" />
+                <stop offset="0.42" stop-color="#e8edf7" />
+                <stop offset="0.78" stop-color="#b5bfd1" />
+                <stop offset="1" stop-color="#7c879b" />
+              </radialGradient>
+              <radialGradient id="metalDark" cx="39%" cy="30%" r="74%">
+                <stop offset="0" stop-color="#9ea9ff" />
+                <stop offset="0.5" stop-color="#2a3152" />
+                <stop offset="1" stop-color="#151a2a" />
+              </radialGradient>
+              <radialGradient id="rose" cx="34%" cy="24%" r="80%">
+                <stop offset="0" stop-color="#f2f5ff" />
+                <stop offset="0.48" stop-color="#9aa7ff" />
+                <stop offset="1" stop-color="#5967d9" />
+              </radialGradient>
+              <radialGradient id="glass" cx="45%" cy="36%" r="70%">
+                <stop offset="0" stop-color="#ffffff" stop-opacity="0.96" />
+                <stop offset="0.42" stop-color="#8bb5ff" stop-opacity="0.78" />
+                <stop offset="1" stop-color="#2458d3" stop-opacity="0.72" />
+              </radialGradient>
+              <linearGradient id="rimLight" x1="88" y1="94" x2="290" y2="328" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#ffffff" stop-opacity="0.55" />
+                <stop offset="0.4" stop-color="#ffffff" stop-opacity="0.12" />
+                <stop offset="1" stop-color="#ffffff" stop-opacity="0.02" />
+              </linearGradient>
+              <linearGradient id="houseWall" x1="35" y1="116" x2="104" y2="190" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#ffffff" />
+                <stop offset="0.52" stop-color="#dfe7f7" />
+                <stop offset="1" stop-color="#aeb9ce" />
+              </linearGradient>
+              <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow dx="0" dy="14" stdDeviation="9" flood-color="#000000" flood-opacity="0.42" />
+                <feDropShadow dx="-2" dy="-2" stdDeviation="1.6" flood-color="#ffffff" flood-opacity="0.12" />
+              </filter>
+              <filter id="tinyShadow" x="-50%" y="-50%" width="200%" height="200%">
+                <feDropShadow dx="0" dy="8" stdDeviation="5" flood-color="#000000" flood-opacity="0.32" />
+              </filter>
+            </defs>
+
+            <ellipse cx="190" cy="323" rx="133" ry="48" fill="rgba(101,112,133,0.14)" />
+            <ellipse cx="190" cy="318" rx="132" ry="45" fill="url(#plateGlow)" stroke="#bcc8ff" stroke-width="2" />
+            <ellipse cx="190" cy="306" rx="127" ry="42" fill="#eef4ff" stroke="#c8d7f2" stroke-width="2" />
+            <ellipse cx="190" cy="297" rx="102" ry="26" fill="#dfe7ff" opacity="0.66" />
+            <path d="M70 303c43 18 194 18 240 0" stroke="#ffffff" stroke-width="2" opacity="0.7" />
+
+            <g filter="url(#softShadow)">
+              <path d="M113 160c-19 2-33 20-30 40l12 67c3 18 20 30 38 27l17-3-16-134-21 3Z" fill="url(#bodyMetal)" stroke="#31282a" stroke-width="3" />
+              <path d="M99 176c-7 15-5 31 4 48" stroke="url(#rimLight)" stroke-width="3" stroke-linecap="round" opacity="0.64" />
+              <path d="M267 160c19 2 33 20 30 40l-12 67c-3 18-20 30-38 27l-17-3 16-134 21 3Z" fill="url(#bodyMetal)" stroke="#31282a" stroke-width="3" />
+              <path d="M281 176c7 15 5 31-4 48" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.16" />
+              <circle cx="121" cy="174" r="20" fill="url(#rose)" stroke="#3d477c" stroke-width="3" />
+              <circle cx="259" cy="174" r="20" fill="url(#rose)" stroke="#3d477c" stroke-width="3" />
+
+              <path d="M142 173c7-24 89-24 96 0l18 91c5 28-16 54-45 54h-42c-29 0-50-26-45-54l18-91Z" fill="url(#bodyMetal)" stroke="#30292b" stroke-width="3" />
+              <path d="M145 188c-13 54-18 97 8 114" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.2" />
+              <path d="M231 188c13 54 18 97-8 114" stroke="#2b2527" stroke-width="3" stroke-linecap="round" opacity="0.24" />
+              <rect x="157" y="211" width="66" height="62" rx="18" fill="#26305b" stroke="#18202e" stroke-width="4" />
+              <rect x="164" y="218" width="52" height="48" rx="14" fill="#5c7cff" opacity="0.42" />
+              <circle cx="176" cy="231" r="5" fill="#ffffff" />
+              <circle cx="204" cy="231" r="5" fill="#ffffff" />
+              <circle cx="175" cy="253" r="5" fill="#ffffff" />
+              <circle cx="205" cy="253" r="5" fill="#ffffff" />
+              <circle cx="190" cy="242" r="5" fill="#ffffff" />
+
+              <path d="M123 74c10-45 124-45 134 0l6 40c6 39-23 75-63 75h-20c-40 0-69-36-63-75l6-40Z" fill="url(#metal)" stroke="#332b2d" stroke-width="3" />
+              <path d="M130 83c15-35 106-41 121 0" stroke="#fff9ee" stroke-width="5" stroke-linecap="round" opacity="0.32" />
+              <path d="M137 162c21 17 86 18 107 0" stroke="#453b3d" stroke-width="4" stroke-linecap="round" opacity="0.34" />
+              <path d="M159 39c10-12 52-12 62 0l7 28c-21 10-55 10-76 0l7-28Z" fill="url(#rose)" stroke="#3d477c" stroke-width="3" />
+              <path d="M164 44c12-8 41-8 52 0" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.52" />
+              <rect x="132" y="91" width="116" height="65" rx="32" fill="#20283f" stroke="#151a2a" stroke-width="5" />
+              <rect x="141" y="100" width="98" height="47" rx="24" fill="url(#metalDark)" opacity="0.78" />
+              <path d="M150 102c18-8 63-8 80 1" stroke="#c8d7f2" stroke-width="3" stroke-linecap="round" opacity="0.34" />
+              <circle cx="166" cy="122" r="14" fill="#ffffff" />
+              <circle cx="166" cy="122" r="6" fill="#1d2638" />
+              <circle cx="160" cy="115" r="4" fill="#fff7f1" />
+              <circle cx="214" cy="122" r="14" fill="#ffffff" />
+              <circle cx="214" cy="122" r="6" fill="#1d2638" />
+              <circle cx="208" cy="115" r="4" fill="#fff7f1" />
+              <path d="M181 140c4 8 14 8 18 0" stroke="#edf4ff" stroke-width="5" stroke-linecap="round" />
+
+              <rect x="98" y="88" width="29" height="57" rx="14" fill="url(#rose)" stroke="#3d477c" stroke-width="3" />
+              <rect x="253" y="88" width="29" height="57" rx="14" fill="url(#rose)" stroke="#3d477c" stroke-width="3" />
+              <circle cx="112" cy="117" r="10" fill="#20283f" stroke="#edf4ff" stroke-width="2" />
+              <circle cx="268" cy="117" r="10" fill="#20283f" stroke="#edf4ff" stroke-width="2" />
+              <circle cx="105" cy="101" r="4" fill="#ffffff" opacity="0.55" />
+              <circle cx="261" cy="101" r="4" fill="#ffffff" opacity="0.55" />
+
+              <path d="M126 294h35v25c0 10-8 18-18 18s-18-8-18-18l1-25Z" fill="url(#metal)" stroke="#2b2426" stroke-width="3" />
+              <path d="M219 294h35l1 25c0 10-8 18-18 18s-18-8-18-18v-25Z" fill="url(#metal)" stroke="#2b2426" stroke-width="3" />
+              <path d="M120 331h45c4 0 8 4 8 8v3h-61v-3c0-4 4-8 8-8Z" fill="#6370e8" stroke="#253057" stroke-width="3" />
+              <path d="M215 331h45c4 0 8 4 8 8v3h-61v-3c0-4 4-8 8-8Z" fill="#6370e8" stroke="#253057" stroke-width="3" />
+
+              <path d="M97 232c-21 7-37 15-43 29" stroke="#8bb5ff" stroke-width="3" stroke-linecap="round" />
+              <path d="M283 232c21 7 37 15 43 29" stroke="#8bb5ff" stroke-width="3" stroke-linecap="round" />
+              <path d="M85 258c-5 24 12 31 29 22" stroke="#30292b" stroke-width="6" stroke-linecap="round" />
+              <circle cx="75" cy="258" r="9" fill="#cfc8c2" stroke="#2a2426" stroke-width="3" />
+              <circle cx="93" cy="266" r="8" fill="#cfc8c2" stroke="#2a2426" stroke-width="3" />
+              <circle cx="111" cy="272" r="7" fill="#cfc8c2" stroke="#2a2426" stroke-width="3" />
+              <path d="M295 258c5 24-12 31-29 22" stroke="#30292b" stroke-width="6" stroke-linecap="round" />
+              <circle cx="305" cy="258" r="9" fill="#cfc8c2" stroke="#2a2426" stroke-width="3" />
+              <circle cx="287" cy="266" r="8" fill="#cfc8c2" stroke="#2a2426" stroke-width="3" />
+              <circle cx="269" cy="272" r="7" fill="#cfc8c2" stroke="#2a2426" stroke-width="3" />
+            </g>
+
+            <g opacity="0.96" filter="url(#tinyShadow)">
+              <circle cx="321" cy="105" r="40" fill="rgba(255,255,255,0.28)" stroke="#eadfd6" stroke-width="4" />
+              <circle cx="321" cy="105" r="29" fill="url(#glass)" stroke="#fff2e7" stroke-width="2" />
+              <circle cx="311" cy="91" r="14" fill="#fff7ef" opacity="0.18" />
+              <path d="M294 113c18-6 37-24 45-44" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.75" />
+              <path d="M306 131c14-29 29-52 43-67" stroke="#2458d3" stroke-width="2" />
+              <path d="M296 94c24 3 44 13 55 31" stroke="#2458d3" stroke-width="2" />
+              <circle cx="322" cy="105" r="4" fill="#ffffff" />
+              <circle cx="320" cy="72" r="5" fill="#5c7cff" />
+              <circle cx="346" cy="124" r="4" fill="#5c7cff" />
+            </g>
+
+            <g filter="url(#tinyShadow)">
+              <path d="M31 145l43-22 43 22v48H31v-48Z" fill="url(#houseWall)" stroke="#657085" stroke-width="3" />
+              <path d="M20 148l54-37 54 37-11 8-43-29-43 29-11-8Z" fill="#edf4ff" stroke="#657085" stroke-width="3" />
+              <path d="M74 127l43 29" stroke="#ffffff" stroke-width="3" opacity="0.55" />
+              <rect x="46" y="159" width="21" height="34" fill="#657085" opacity="0.8" />
+              <rect x="81" y="158" width="23" height="19" fill="#2458d3" opacity="0.55" />
+            </g>
+
+            <g filter="url(#tinyShadow)">
+              <circle cx="46" cy="248" r="27" fill="url(#rose)" stroke="#3d477c" stroke-width="3" />
+              <path d="M46 221v-19" stroke="#c8d7f2" stroke-width="3" stroke-linecap="round" />
+              <circle cx="46" cy="199" r="4" fill="#c8d7f2" />
+              <circle cx="36" cy="247" r="3" fill="#ffffff" />
+              <circle cx="57" cy="249" r="3" fill="#ffffff" />
+              <circle cx="28" cy="112" r="9" fill="url(#rose)" stroke="#edf4ff" stroke-width="1.4" />
+              <circle cx="63" cy="82" r="10" fill="url(#rose)" stroke="#edf4ff" stroke-width="1.4" />
+              <circle cx="82" cy="215" r="7" fill="url(#rose)" stroke="#edf4ff" stroke-width="1.4" />
+            </g>
+
+            <g filter="url(#tinyShadow)">
+              <circle cx="337" cy="248" r="27" fill="url(#rose)" stroke="#3d477c" stroke-width="3" />
+              <path d="M337 221v-19" stroke="#c8d7f2" stroke-width="3" stroke-linecap="round" />
+              <circle cx="337" cy="199" r="4" fill="#c8d7f2" />
+              <circle cx="327" cy="247" r="3" fill="#ffffff" />
+              <circle cx="348" cy="249" r="3" fill="#ffffff" />
+              <circle cx="354" cy="72" r="9" fill="url(#rose)" stroke="#edf4ff" stroke-width="1.4" />
+              <circle cx="322" cy="31" r="10" fill="url(#rose)" stroke="#edf4ff" stroke-width="1.4" />
+            </g>
+
+            <g filter="url(#tinyShadow)">
+              <rect x="90" y="295" width="37" height="37" rx="4" fill="#d9e2f5" stroke="#657085" stroke-width="3" />
+              <path d="M90 304h37M99 295v37M117 295v37M90 320h37" stroke="#ffffff" stroke-width="2" opacity="0.72" />
+              <rect x="268" y="295" width="31" height="34" rx="6" fill="#ffffff" stroke="#657085" stroke-width="3" />
+              <ellipse cx="283" cy="329" rx="24" ry="6" fill="#d9dee7" opacity="0.78" />
+            </g>
+          </svg>
+        </section>
+
+        <section class="copy">
+          <h1>Easily Control<br />Your Home</h1>
+          <p>Easily take control and manage your home from anytime, anywhere.</p>
+        </section>
+
+        <section class="unlock-panel">
+          <div class="hint">Open Smart Care Dashboard</div>
+          <form class="password-form" id="password-form" autocomplete="off">
+            <button class="enter-button" type="submit">Open</button>
+          </form>
+          <div class="password-status" id="password-status">Click Open to enter</div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const passwordForm = document.getElementById("password-form");
+      const passwordStatus = document.getElementById("password-status");
+
+      function resetUnlockPage() {
+        passwordForm.reset();
+        passwordStatus.classList.remove("error");
+        passwordStatus.textContent = "Click Open to enter";
+      }
+
+      function goDashboard() {
+        if (window.location.protocol === "file:" || window.location.pathname.endsWith("/home_unlock_preview.html")) {
+          window.location.href = "index.html";
+          return;
+        }
+
+        window.location.href = "/dashboard";
+      }
+
+      window.addEventListener("pageshow", () => {
+        resetUnlockPage();
+      });
+
+      passwordForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        passwordStatus.classList.remove("error");
+        passwordStatus.textContent = "Opening dashboard...";
+        window.setTimeout(goDashboard, 180);
+      });
+    </script>
+  </body>
+</html>

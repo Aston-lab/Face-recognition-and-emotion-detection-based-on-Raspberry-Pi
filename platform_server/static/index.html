@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -26,7 +26,12 @@
 
       body {
         margin: 0;
-        background: var(--bg);
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at 12% 8%, rgba(92, 124, 255, 0.22), transparent 30%),
+          radial-gradient(circle at 88% 12%, rgba(57, 167, 109, 0.18), transparent 28%),
+          radial-gradient(circle at 50% 96%, rgba(255, 183, 120, 0.18), transparent 34%),
+          var(--bg);
         color: var(--text);
         font-family: Arial, Helvetica, sans-serif;
         letter-spacing: 0;
@@ -37,22 +42,59 @@
         align-items: center;
         justify-content: space-between;
         gap: 16px;
-        min-height: 64px;
-        padding: 0 24px;
-        border-bottom: 1px solid var(--line);
-        background: var(--surface);
-        box-shadow: 0 1px 0 rgba(24, 32, 46, 0.04);
+        width: min(1240px, calc(100vw - 32px));
+        min-height: 76px;
+        margin: 24px auto 0;
+        padding: 14px 20px;
+        border: 1px solid rgba(255, 255, 255, 0.74);
+        border-radius: 28px;
+        background: rgba(255, 255, 255, 0.68);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.76),
+          0 18px 45px rgba(24, 32, 46, 0.12);
+        backdrop-filter: blur(22px) saturate(1.22);
+        -webkit-backdrop-filter: blur(22px) saturate(1.22);
       }
 
       h1 {
         margin: 0;
-        font-size: 20px;
-        font-weight: 700;
+        font-size: 22px;
+        font-weight: 900;
+      }
+
+      .brand-mark {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .brand-logo {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 16px;
+        background: linear-gradient(145deg, #6b7cff, #8bb5ff);
+        color: #ffffff;
+        font-size: 22px;
+        font-weight: 900;
+      }
+
+      .header-live {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      #refresh {
+        display: none;
       }
 
       main {
         width: min(1240px, calc(100vw - 32px));
-        margin: 24px auto;
+        margin: 16px auto 24px;
       }
 
       section {
@@ -164,8 +206,58 @@
         gap: 10px;
       }
 
+      .history-toggle {
+        white-space: nowrap;
+      }
+
+      .danger-button {
+        border-color: #f1c7c4;
+        background: #fff5f4;
+        color: var(--red);
+      }
+
+      .danger-button:hover {
+        border-color: var(--red);
+        color: var(--red);
+      }
+
+      tr.telemetry-row {
+        position: relative;
+      }
+
+      .telemetry-delete-button {
+        position: absolute;
+        top: 8px;
+        right: 10px;
+        z-index: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        min-height: 30px;
+        padding: 0;
+        border-radius: 999px;
+        border-color: #f1c7c4;
+        background: rgba(255, 245, 244, 0.94);
+        color: var(--red);
+        font-size: 15px;
+        line-height: 1;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-2px);
+        transition: opacity 0.16s ease, transform 0.16s ease, border-color 0.16s ease;
+      }
+
+      tr.telemetry-row:hover .telemetry-delete-button,
+      tr.telemetry-row:focus-within .telemetry-delete-button {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+      }
+
       .status-strip {
-        display: flex;
+        display: none;
         flex-wrap: wrap;
         align-items: center;
         gap: 12px;
@@ -173,6 +265,70 @@
         margin-bottom: 18px;
         color: var(--muted);
         font-size: 14px;
+      }
+
+      .fall-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 62px;
+        padding: 14px 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        box-shadow: 0 6px 18px rgba(24, 32, 46, 0.04);
+      }
+
+      .fall-main {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .alarm-light {
+        position: relative;
+        width: 28px;
+        height: 28px;
+        border-radius: 50% 50% 45% 45%;
+        border: 2px solid #ccd3df;
+        background: #eef1f5;
+      }
+
+      .alarm-light::after {
+        content: "";
+        position: absolute;
+        left: 5px;
+        right: 5px;
+        bottom: -7px;
+        height: 5px;
+        border-radius: 5px;
+        background: #ccd3df;
+      }
+
+      .fall-card.fall {
+        border-color: #f2b8b5;
+        background: #fff5f5;
+      }
+
+      .fall-card.fall .fall-state {
+        color: var(--red);
+      }
+
+      .fall-card.fall .alarm-light {
+        border-color: #b42318;
+        background: #f04438;
+        box-shadow: 0 0 0 5px rgba(240, 68, 56, 0.12), 0 0 20px rgba(240, 68, 56, 0.5);
+      }
+
+      .fall-state {
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      .fall-meta {
+        color: var(--muted);
+        font-size: 13px;
       }
 
       .dot {
@@ -197,8 +353,8 @@
         border-collapse: separate;
         border-spacing: 0;
         table-layout: fixed;
-        background: var(--surface);
-        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(217, 225, 242, 0.86);
         border-radius: 8px;
         overflow: hidden;
         box-shadow: 0 6px 18px rgba(24, 32, 46, 0.04);
@@ -371,10 +527,21 @@
         padding: 24px;
       }
 
+      #report-modal {
+        z-index: 40;
+      }
+
+      #wifi-fall-alert,
+      #visual-fall-alert {
+        z-index: 50;
+      }
+
       .modal-backdrop {
         position: absolute;
         inset: 0;
-        background: rgba(24, 32, 46, 0.42);
+        background: rgba(24, 32, 46, 0.34);
+        backdrop-filter: blur(7px);
+        -webkit-backdrop-filter: blur(7px);
       }
 
       .report-shell {
@@ -383,8 +550,498 @@
         max-height: calc(100vh - 48px);
         overflow: auto;
         border-radius: 8px;
-        background: var(--surface);
-        box-shadow: var(--shadow);
+        border: 1px solid rgba(255, 255, 255, 0.76);
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.75),
+          0 24px 60px rgba(24, 32, 46, 0.2);
+        backdrop-filter: blur(24px) saturate(1.22);
+        -webkit-backdrop-filter: blur(24px) saturate(1.22);
+      }
+
+      .alert-shell {
+        position: relative;
+        width: min(760px, calc(100vw - 32px));
+        min-height: 260px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.76);
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.75),
+          0 24px 60px rgba(24, 32, 46, 0.2);
+        backdrop-filter: blur(24px) saturate(1.22);
+        -webkit-backdrop-filter: blur(24px) saturate(1.22);
+      }
+
+      .alert-card {
+        display: grid;
+        gap: 18px;
+        padding: 34px 36px 30px;
+      }
+
+      .alert-title {
+        margin: 0;
+        color: var(--red);
+        font-size: 28px;
+        line-height: 1.25;
+      }
+
+      .alert-message {
+        padding: 18px 20px;
+        border-radius: 8px;
+        background: #fff5f5;
+        color: #7a1d18;
+        font-size: 22px;
+        line-height: 1.45;
+      }
+
+      .alert-image {
+        display: block;
+        width: 100%;
+        max-height: 360px;
+        object-fit: contain;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #f8fafc;
+      }
+
+      .alert-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 26px;
+      }
+
+      .smart-shell {
+        display: grid;
+        gap: 18px;
+      }
+
+      .smart-hero,
+      .smart-card,
+      .smart-panel {
+        border: 1px solid rgba(255, 255, 255, 0.74);
+        border-radius: 26px;
+        background: rgba(255, 255, 255, 0.68);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.76),
+          0 18px 45px rgba(24, 32, 46, 0.14);
+        backdrop-filter: blur(22px) saturate(1.22);
+        -webkit-backdrop-filter: blur(22px) saturate(1.22);
+      }
+
+      .smart-hero {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 18px;
+        padding: 28px;
+      }
+
+      .smart-title {
+        margin: 0;
+        font-size: clamp(32px, 5vw, 58px);
+        line-height: 1.08;
+      }
+
+      .smart-copy {
+        max-width: 620px;
+        margin: 14px 0 0;
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.7;
+      }
+
+      .smart-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 24px;
+      }
+
+      .smart-pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 42px;
+        padding: 0 16px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: #ffffff;
+        color: var(--muted);
+        font-weight: 700;
+      }
+
+      .smart-pill.primary {
+        border-color: transparent;
+        background: #5c7cff;
+        color: #ffffff;
+      }
+
+      .smart-temp-card {
+        display: grid;
+        align-content: space-between;
+        min-height: 230px;
+        padding: 22px;
+        border-radius: 26px;
+        border: 1px solid rgba(255, 255, 255, 0.72);
+        background: linear-gradient(160deg, rgba(238, 244, 255, 0.78), rgba(255, 247, 240, 0.72));
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+      }
+
+      .smart-temp-top {
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+      }
+
+      .smart-temp-value {
+        font-size: 48px;
+        font-weight: 900;
+      }
+
+      .smart-temp-meta {
+        margin: 0;
+        font-size: 16px;
+      }
+
+      .smart-temp-location {
+        margin: 7px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .smart-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .smart-card {
+        min-height: 168px;
+        padding: 20px;
+      }
+
+      .clickable-card {
+        cursor: pointer;
+        transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+      }
+
+      .clickable-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(92, 124, 255, 0.35);
+        box-shadow: 0 22px 50px rgba(24, 32, 46, 0.14);
+      }
+
+      .smart-card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .smart-icon {
+        display: grid;
+        place-items: center;
+        width: 48px;
+        height: 48px;
+        border-radius: 18px;
+        background: #eef4ff;
+        font-size: 22px;
+      }
+
+      .smart-card h2 {
+        margin-top: 18px;
+        font-size: 20px;
+      }
+
+      .smart-card p {
+        margin-top: 8px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .smart-sub-statuses {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .smart-sub-status {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        min-height: 34px;
+        padding: 0 10px;
+        border-radius: 14px;
+        background: #f6f8fc;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .smart-sub-status.fall {
+        background: #fff1ef;
+        color: var(--red);
+      }
+
+      .smart-console-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .smart-chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        padding: 0 10px;
+        border: 1px solid #d8e1f2;
+        border-radius: 999px;
+        background: #f7faff;
+        color: #52627f;
+        font-size: 13px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+      }
+
+      .smart-chip:hover {
+        border-color: rgba(92, 124, 255, 0.48);
+        background: #eef4ff;
+        color: #2f4fd4;
+      }
+
+      .smart-panel {
+        padding: 20px;
+      }
+
+      .smart-panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+      }
+
+      .smart-device-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .smart-device-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(140px, 0.8fr) auto;
+        align-items: center;
+        gap: 18px;
+        min-height: 62px;
+        padding: 12px 14px;
+        border: 1px solid rgba(255, 255, 255, 0.74);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.62);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
+      }
+
+      .smart-device-name {
+        display: grid;
+        gap: 3px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 900;
+      }
+
+      .smart-device-id {
+        color: var(--muted);
+        font-family: Consolas, Monaco, monospace;
+        font-weight: 600;
+      }
+
+      .chat-log {
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+        max-height: min(62vh, 640px);
+        overflow-y: auto;
+        padding: 14px 8px 22px;
+      }
+
+      .chat-message {
+        display: flex;
+        width: 100%;
+      }
+
+      .chat-message.user {
+        justify-content: flex-end;
+      }
+
+      .chat-message.assistant,
+      .chat-message.system {
+        justify-content: flex-start;
+      }
+
+      .chat-bubble {
+        max-width: min(520px, 76%);
+        padding: 14px 16px;
+        border: 1px solid rgba(255, 255, 255, 0.72);
+        border-radius: 18px;
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.72),
+          0 14px 34px rgba(24, 32, 46, 0.11);
+        backdrop-filter: blur(18px) saturate(1.2);
+        -webkit-backdrop-filter: blur(18px) saturate(1.2);
+      }
+
+      .chat-message.user .chat-bubble {
+        border-top-right-radius: 6px;
+        background: linear-gradient(145deg, rgba(221, 243, 255, 0.82), rgba(237, 248, 255, 0.58));
+      }
+
+      .chat-message.assistant .chat-bubble,
+      .chat-message.system .chat-bubble {
+        border-top-left-radius: 6px;
+        background: linear-gradient(145deg, rgba(246, 248, 252, 0.86), rgba(236, 240, 247, 0.62));
+      }
+
+      .chat-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 10px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .chat-text {
+        color: var(--text);
+        font-size: 16px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .detail-shell {
+        position: relative;
+        width: min(1080px, calc(100vw - 32px));
+        max-height: calc(100vh - 48px);
+        overflow: auto;
+        padding: 28px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.76);
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.75),
+          0 24px 60px rgba(24, 32, 46, 0.2);
+        backdrop-filter: blur(24px) saturate(1.22);
+        -webkit-backdrop-filter: blur(24px) saturate(1.22);
+      }
+
+      .detail-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 18px;
+      }
+
+      .detail-head h2 {
+        font-size: 26px;
+      }
+
+      .detail-section {
+        margin-top: 20px;
+      }
+
+      .detail-section h3 {
+        margin: 0 0 10px;
+        font-size: 18px;
+      }
+
+      .detail-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 20px;
+      }
+
+      .detail-table-wrap {
+        overflow-x: auto;
+      }
+
+      .smart-command-form {
+        display: grid;
+        grid-template-columns: minmax(220px, 280px) minmax(220px, 300px) auto;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 14px;
+      }
+
+      .smart-command-form select,
+      .smart-command-form input {
+        width: 100%;
+      }
+
+      .esp32-console-panel {
+        display: grid;
+        gap: 18px;
+        max-width: 760px;
+      }
+
+      .esp32-console-note {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .esp32-console-status {
+        min-height: 48px;
+        padding: 14px 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.68);
+        color: var(--muted);
+      }
+
+      .telemetry-admin-bar {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .telemetry-admin-bar input {
+        max-width: 260px;
+      }
+
+      .telemetry-clear-footer {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 12px;
+        min-height: 24px;
+      }
+
+      .legacy-section {
+        display: none;
+      }
+
+      main > .smart-shell ~ section {
+        display: none;
+      }
+
+      @media (max-width: 900px) {
+        .smart-hero,
+        .smart-grid,
+        .smart-command-form {
+          grid-template-columns: 1fr;
+        }
+
+        .smart-device-row {
+          grid-template-columns: 1fr auto;
+        }
+
+        .smart-device-role {
+          grid-column: 1 / -1;
+        }
       }
 
       .report-card {
@@ -506,7 +1163,14 @@
   </head>
   <body>
     <header>
-      <h1>ASDUN Platform</h1>
+      <div class="brand-mark">
+        <div class="brand-logo">A</div>
+        <h1>ASDUN Smart Care</h1>
+      </div>
+      <div class="header-live">
+        <span id="header-ws-dot" class="dot"></span>
+        <span id="header-ws-text">Connecting · Not updated</span>
+      </div>
       <button id="refresh" type="button">Refresh</button>
     </header>
     <main>
@@ -514,6 +1178,115 @@
         <span><span id="ws-dot" class="dot"></span><span id="ws-state">Connecting</span></span>
         <span id="updated">Not updated</span>
       </div>
+
+      <div class="smart-shell">
+        <section class="smart-hero">
+          <div>
+            <h1 class="smart-title">智能看护中心</h1>
+            <p class="smart-copy">集中查看情绪助手、摔倒检测、温湿度、控制台和设备在线状态。首页优先呈现看护状态，点击卡片查看实时数据表格。</p>
+            <div class="smart-pills">
+              <span id="smart-online-summary" class="smart-pill primary">设备在线</span>
+              <span id="smart-recognition-summary" class="smart-pill">今日识别 0 条</span>
+              <span class="smart-pill">情绪助手已启用</span>
+            </div>
+          </div>
+          <div id="smart-telemetry-card" class="smart-temp-card clickable-card" data-detail="telemetry" role="button" tabindex="0">
+            <div class="smart-temp-top"><span>Living Room</span><span id="smart-telemetry-comfort">Comfort</span></div>
+            <div>
+              <div id="smart-temp-value" class="smart-temp-value">-</div>
+              <p id="smart-telemetry-meta" class="muted smart-temp-meta">Humidity - · RSSI -</p>
+              <p id="smart-telemetry-location" class="smart-temp-location">Location -</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="smart-grid">
+          <article id="smart-emotion-card" class="smart-card clickable-card" data-detail="emotion" role="button" tabindex="0">
+            <div class="smart-card-head">
+              <div class="smart-icon">☻</div>
+              <span id="smart-emotion-status" class="pill online">已记录</span>
+            </div>
+            <h2>情绪助手</h2>
+            <p id="smart-emotion-meta">暂无有效识别记录</p>
+          </article>
+
+          <article id="smart-conversation-card" class="smart-card clickable-card" data-detail="conversation" role="button" tabindex="0">
+            <div class="smart-card-head">
+              <div class="smart-icon">▣</div>
+              <span id="smart-conversation-status" class="pill online">待记录</span>
+            </div>
+            <h2>对话日志</h2>
+            <p id="smart-conversation-meta">等待小智实时上传对话</p>
+          </article>
+
+          <article class="smart-card">
+            <div class="smart-card-head">
+              <div class="smart-icon">◎</div>
+              <span id="smart-fall-status" class="pill online">正常</span>
+            </div>
+            <h2>摔倒检测</h2>
+            <p>视觉与 WiFi 双通道看护</p>
+            <div class="smart-sub-statuses">
+              <div id="smart-visual-fall-row" class="smart-sub-status"><span>视觉摔倒检测</span><span id="smart-visual-fall-text">正常</span></div>
+              <div id="smart-wifi-fall-row" class="smart-sub-status"><span>WiFi 摔倒检测</span><span id="smart-wifi-fall-text">正常</span></div>
+            </div>
+          </article>
+
+          <article id="smart-console-card" class="smart-card clickable-card" data-detail="commands" role="button" tabindex="0" onclick="openSmartDetail('commands')">
+            <div class="smart-card-head">
+              <div class="smart-icon">●</div>
+              <span class="pill online">可用</span>
+            </div>
+            <h2>控制台</h2>
+            <p>连接 ESP32 并控制温湿度采集工作状态</p>
+            <div class="smart-console-actions">
+              <span class="smart-chip" data-open-smart-detail="commands">Connect</span>
+              <span class="smart-chip" data-open-smart-detail="commands">Start work</span>
+              <span class="smart-chip" data-open-smart-detail="commands">Stop work</span>
+            </div>
+          </article>
+        </section>
+
+        <section class="smart-panel">
+          <div class="smart-panel-head">
+            <h2>Devices</h2>
+            <span id="smart-device-count" class="muted">0</span>
+          </div>
+          <div id="smart-devices" class="smart-device-list"></div>
+        </section>
+      </div>
+
+      <section>
+        <div class="section-head">
+          <h2>WiFi 检测摔倒</h2>
+        </div>
+        <div id="wifi-fall-card" class="fall-card">
+          <div class="fall-main">
+            <span id="wifi-fall-light" class="alarm-light" aria-hidden="true"></span>
+            <div>
+              <div id="wifi-fall-state" class="fall-state">正常</div>
+              <div id="wifi-fall-meta" class="fall-meta">等待 WiFi CSI 检测设备实时上报</div>
+            </div>
+          </div>
+          <span id="wifi-fall-time" class="muted">-</span>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <h2>视觉检测摔倒</h2>
+        </div>
+        <div id="visual-fall-card" class="fall-card">
+          <div class="fall-main">
+            <span id="visual-fall-light" class="alarm-light" aria-hidden="true"></span>
+            <div>
+              <div id="visual-fall-state" class="fall-state">正常</div>
+              <div id="visual-fall-meta" class="fall-meta">等待视觉摔倒检测程序实时上报</div>
+            </div>
+          </div>
+          <span id="visual-fall-time" class="muted">-</span>
+        </div>
+      </section>
 
       <section>
         <div class="section-head">
@@ -577,7 +1350,11 @@
       <section>
         <div class="section-head">
           <h2>Telemetry</h2>
-          <span id="telemetry-count" class="muted">0</span>
+          <div class="section-actions">
+            <button id="toggle-telemetry-history" class="text-button history-toggle" type="button" hidden>Show all</button>
+            <button id="clear-all-telemetry" class="danger-button" type="button">Clear all</button>
+            <span id="telemetry-count" class="muted">0</span>
+          </div>
         </div>
         <table>
           <thead>
@@ -588,10 +1365,11 @@
               <th>Humidity</th>
               <th>Light</th>
               <th>RSSI</th>
+              <th>Location</th>
             </tr>
           </thead>
           <tbody id="telemetry">
-            <tr><td class="empty" colspan="6">No telemetry</td></tr>
+            <tr><td class="empty" colspan="7">No telemetry</td></tr>
           </tbody>
         </table>
       </section>
@@ -627,7 +1405,10 @@
       <section>
         <div class="section-head">
           <h2>Recognition</h2>
-          <span id="event-count" class="muted">0</span>
+          <div class="section-actions">
+            <button id="toggle-recognition-history" class="text-button history-toggle" type="button" hidden>Show all</button>
+            <span id="event-count" class="muted">0</span>
+          </div>
         </div>
         <table>
           <thead>
@@ -658,15 +1439,86 @@
       </div>
     </div>
 
+    <div id="wifi-fall-alert" class="modal" hidden>
+      <div class="modal-backdrop" data-close-wifi-fall-alert></div>
+      <div class="alert-shell" role="dialog" aria-modal="true" aria-labelledby="wifi-fall-alert-title">
+        <div class="alert-card">
+          <h2 id="wifi-fall-alert-title" class="alert-title">警告：</h2>
+          <div class="alert-message">wifi检测到人员摔倒</div>
+          <div class="alert-actions">
+            <button id="close-wifi-fall-alert" class="primary-button" type="button">关闭</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="visual-fall-alert" class="modal" hidden>
+      <div class="modal-backdrop" data-close-visual-fall-alert></div>
+      <div class="alert-shell" role="dialog" aria-modal="true" aria-labelledby="visual-fall-alert-title">
+        <div class="alert-card">
+          <h2 id="visual-fall-alert-title" class="alert-title">警告：</h2>
+          <div class="alert-message">视觉检测到人员摔倒</div>
+          <img id="visual-fall-alert-image" class="alert-image" alt="视觉摔倒检测图片" hidden />
+          <div class="alert-actions">
+            <button id="close-visual-fall-alert" class="primary-button" type="button">关闭</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="smart-detail-modal" class="modal" hidden>
+      <div class="modal-backdrop" data-close-smart-detail></div>
+      <div class="detail-shell" role="dialog" aria-modal="true" aria-labelledby="smart-detail-title">
+        <div class="detail-head">
+          <div>
+            <h2 id="smart-detail-title">详情</h2>
+            <p id="smart-detail-subtitle" class="muted"></p>
+          </div>
+          <button id="close-smart-detail" type="button">关闭</button>
+        </div>
+        <div id="smart-detail-content"></div>
+        <div class="detail-actions">
+          <button type="button" data-close-smart-detail>关闭</button>
+        </div>
+      </div>
+    </div>
+
     <script>
       const state = {
         devices: [],
         commands: [],
         telemetry: [],
+        conversation_events: [],
         people: [],
         recognition_events: [],
         selectedPerson: "",
+        telemetryExpanded: false,
+        recognitionExpanded: false,
+        smartTelemetryExpanded: false,
+        smartCommandsExpanded: false,
+        smartConversationExpanded: false,
+        smartPeopleExpanded: false,
+        smartRecognitionExpanded: false,
+        activeSmartDetail: "",
+        smartCommandDevice: "",
+        lastWifiFallDetected: false,
+        lastVisualFallDetected: false,
+        wifiFall: {
+          detected: false,
+          label: "正常",
+          meta: "等待 WiFi CSI 检测设备实时上报",
+          time: "-",
+        },
+        visualFall: {
+          detected: false,
+          label: "正常",
+          meta: "等待视觉摔倒检测程序实时上报",
+          time: "-",
+          imageUrl: "",
+        },
         activeReport: null,
+        telemetryClearStatus: "",
+        telemetryAdminVerified: Boolean(localStorage.getItem("asdun_admin_token") || ""),
         ws: null,
       };
 
@@ -675,6 +1527,7 @@
 
       function timeText(ms) {
         if (!ms) return "-";
+        if (Number(ms) < 1704067200000) return "-";
         return new Date(ms).toLocaleString();
       }
 
@@ -714,6 +1567,14 @@
 
       function deviceDetails(device) {
         const status = device.status || {};
+        if (device.role === "wifi_fall_rx") {
+          const parts = [];
+          const fall = Boolean(status.wifi_fall_detected ?? status.fall_detected);
+          parts.push(`fall=${fall ? "yes" : "no"}`);
+          if (status.action) parts.push(`action=${status.action}`);
+          if (status.action_confidence != null) parts.push(`confidence=${Number(status.action_confidence).toFixed(0)}%`);
+          return parts.join("  ");
+        }
         if (device.role === "raspberry_pi") {
           const parts = [];
           if (status.mode) parts.push(`mode=${status.mode}`);
@@ -742,6 +1603,145 @@
           return parts.join("  ");
         }
         return shortStatus(status);
+      }
+
+      function wifiFallCandidate(device) {
+        const status = device.status || {};
+        return device.role === "wifi_fall_rx" ||
+          status.wifi_fall_detected != null;
+      }
+
+      function wifiFallStatusFromDevice(device) {
+        const status = device.status || {};
+        const detected = Boolean(status.wifi_fall_detected);
+        const action = status.action || (detected ? "Fall" : "Normal");
+        const confidence = status.action_confidence == null ? "" : `  置信度 ${Number(status.action_confidence).toFixed(0)}%`;
+        const deviceName = device.display_name || device.device_id || "-";
+        return {
+          detected,
+          label: detected ? "人员摔倒" : "正常",
+          meta: `${deviceName}  ${action}${confidence}`,
+          time: timeText(device.status_ts_ms || device.last_seen_ms),
+        };
+      }
+
+      function visualFallCandidate(device) {
+        const status = device.status || {};
+        return device.role === "visual_fall_detector" ||
+          device.role === "fall_detector" ||
+          device.role === "camera_fall_detector" ||
+          status.visual_fall_detected != null ||
+          status.visual_fall_image_url != null;
+      }
+
+      function visualFallStatusFromDevice(device) {
+        const status = device.status || {};
+        const detected = Boolean(status.visual_fall_detected ?? status.fall_detected);
+        const stateText = status.fall_state || status.fall_status || (detected ? "FallDetected" : "Normal");
+        const confidence = status.confidence == null ? "" : `  置信度 ${Number(status.confidence).toFixed(0)}%`;
+        const fps = status.fps == null ? "" : `  fps=${Number(status.fps).toFixed(1)}`;
+        const deviceName = device.display_name || device.device_id || "-";
+        return {
+          detected,
+          label: detected ? "人员摔倒" : "正常",
+          meta: `${deviceName}  ${stateText}${confidence}${fps}`,
+          time: timeText(device.status_ts_ms || device.last_seen_ms),
+          imageUrl: status.image_url || status.visual_fall_image_url || "",
+        };
+      }
+
+      function visualFallStatusFromEvent(event) {
+        const actionText = String(event.alert_action || "").toLowerCase();
+        const stateText = String(event.fall_state || "FallDetected");
+        const lower = stateText.toLowerCase();
+        const detected = actionText !== "clear" && lower.includes("fall") && !lower.includes("normal") && !lower.includes("recover");
+        const source = event.source_device || "-";
+        const fps = event.fps == null ? "" : `  fps=${Number(event.fps).toFixed(1)}`;
+        return {
+          detected,
+          label: detected ? "人员摔倒" : "正常",
+          meta: `${source}  ${stateText}${fps}`,
+          time: timeText(event.ts_ms || event.received_ms),
+          imageUrl: event.image_url || "",
+        };
+      }
+
+      function resetWifiFallStatus() {
+        state.lastWifiFallDetected = false;
+        state.wifiFall = {
+          detected: false,
+          label: "正常",
+          meta: "等待 WiFi CSI 检测设备实时上报",
+          time: "-",
+        };
+      }
+
+      function resetVisualFallStatus() {
+        state.lastVisualFallDetected = false;
+        state.visualFall = {
+          detected: false,
+          label: "正常",
+          meta: "等待视觉摔倒检测程序实时上报",
+          time: "-",
+          imageUrl: "",
+        };
+      }
+
+      function currentWifiFallStatus() {
+        return state.wifiFall;
+      }
+
+      function openWifiFallAlert() {
+        $("wifi-fall-alert").hidden = false;
+      }
+
+      function closeWifiFallAlert() {
+        $("wifi-fall-alert").hidden = true;
+      }
+
+      function openVisualFallAlert(imageUrl) {
+        const image = $("visual-fall-alert-image");
+        if (imageUrl) {
+          image.src = imageUrl;
+          image.hidden = false;
+        } else {
+          image.removeAttribute("src");
+          image.hidden = true;
+        }
+        $("visual-fall-alert").hidden = false;
+      }
+
+      function closeVisualFallAlert() {
+        $("visual-fall-alert").hidden = true;
+      }
+
+      function renderWifiFallStatus() {
+        const fall = currentWifiFallStatus();
+        $("wifi-fall-card").classList.toggle("fall", fall.detected);
+        $("wifi-fall-state").textContent = fall.label;
+        $("wifi-fall-meta").textContent = fall.meta;
+        $("wifi-fall-time").textContent = fall.time;
+
+        if (fall.detected && !state.lastWifiFallDetected) {
+          openWifiFallAlert();
+        }
+        state.lastWifiFallDetected = fall.detected;
+      }
+
+      function renderVisualFallStatus() {
+        const fall = state.visualFall;
+        $("visual-fall-card").classList.toggle("fall", fall.detected);
+        $("visual-fall-state").textContent = fall.label;
+        $("visual-fall-meta").textContent = fall.meta;
+        $("visual-fall-time").textContent = fall.time;
+
+        if (fall.detected && !state.lastVisualFallDetected) {
+          openVisualFallAlert(fall.imageUrl);
+        }
+        if (!fall.detected) {
+          closeVisualFallAlert();
+        }
+        state.lastVisualFallDetected = fall.detected;
       }
 
       function isKnownRecognitionEvent(event) {
@@ -1029,13 +2029,63 @@
       }
 
       function saveAdminToken() {
-        const token = $("admin-token").value.trim();
+        const token = String($("telemetry-admin-token")?.value || $("smart-admin-token")?.value || $("admin-token")?.value || "").trim();
         if (token) {
           localStorage.setItem("asdun_admin_token", token);
+          if ($("admin-token")) $("admin-token").value = token;
+          if ($("smart-admin-token")) $("smart-admin-token").value = token;
+          if ($("telemetry-admin-token")) $("telemetry-admin-token").value = token;
           return token;
         }
         localStorage.removeItem("asdun_admin_token");
         return "";
+      }
+
+      function clearSavedAdminToken() {
+        localStorage.removeItem("asdun_admin_token");
+        state.telemetryAdminVerified = false;
+        if ($("admin-token")) $("admin-token").value = "";
+        if ($("smart-admin-token")) $("smart-admin-token").value = "";
+        if ($("telemetry-admin-token")) $("telemetry-admin-token").value = "";
+      }
+
+      async function verifyTelemetryAdminToken() {
+        const token = String($("telemetry-admin-token")?.value || "").trim();
+        if (!token) {
+          state.telemetryClearStatus = "Please enter admin token.";
+          renderSmartDetail();
+          return;
+        }
+        const res = await fetch("/api/admin/verify", {
+          method: "POST",
+          headers: {"X-ASDUN-Admin-Token": token},
+        });
+        if (!res.ok) {
+          clearSavedAdminToken();
+          state.telemetryClearStatus = "";
+          renderSmartDetail();
+          window.alert("Invalid admin token.");
+          return;
+        }
+        localStorage.setItem("asdun_admin_token", token);
+        state.telemetryAdminVerified = true;
+        state.telemetryClearStatus = "Admin token confirmed.";
+        renderSmartDetail();
+      }
+
+      function handleTelemetryAdminAction() {
+        if (!state.telemetryAdminVerified) {
+          verifyTelemetryAdminToken().catch((error) => {
+            state.telemetryClearStatus = error.message || "Admin token check failed.";
+            renderSmartDetail();
+          });
+          return;
+        }
+        if (window.confirm("Clear saved admin token?")) {
+          clearSavedAdminToken();
+          state.telemetryClearStatus = "Admin token cleared.";
+          renderSmartDetail();
+        }
       }
 
       async function copyReportSummary() {
@@ -1206,24 +2256,38 @@
         return `${numeric.toFixed(1)}${suffix}`;
       }
 
+      function visibleHistory(items, expanded) {
+        return expanded ? items : items.slice(0, 5);
+      }
+
+      function updateHistoryToggle(buttonId, total, expanded) {
+        const button = $(buttonId);
+        const hiddenCount = Math.max(0, total - 5);
+        button.hidden = hiddenCount === 0;
+        button.textContent = expanded ? "Collapse" : `Show all ${total}`;
+        button.title = expanded ? "Collapse older records" : `Show ${hiddenCount} older records`;
+      }
+
       function renderTelemetry() {
         const telemetry = state.telemetry || [];
         $("telemetry-count").textContent = `${telemetry.length}`;
+        updateHistoryToggle("toggle-telemetry-history", telemetry.length, state.telemetryExpanded);
         const body = $("telemetry");
         if (!telemetry.length) {
-          body.innerHTML = '<tr><td class="empty" colspan="6">No telemetry</td></tr>';
+          body.innerHTML = '<tr><td class="empty" colspan="7">No telemetry</td></tr>';
           return;
         }
-        body.innerHTML = telemetry.slice(0, 50).map((event) => {
+        body.innerHTML = visibleHistory(telemetry, state.telemetryExpanded).map((event) => {
           const raw = event.telemetry || {};
           return `
-            <tr>
-              <td>${timeText(event.ts_ms)}</td>
+            <tr class="telemetry-row">
+              <td>${timeText(event.ts_ms)}<button class="telemetry-delete-button" type="button" data-clear-telemetry="${event.id}" title="Delete this record" aria-label="Delete this telemetry record">🗑</button></td>
               <td class="mono truncate">${event.device_id || "-"}</td>
-              <td>${metricValue(event.temperature ?? raw.temperature, " C")}</td>
+              <td>${metricValue(event.temperature ?? raw.temperature, "℃")}</td>
               <td>${metricValue(event.humidity ?? raw.humidity, "%")}</td>
               <td>${metricValue(event.light ?? raw.light)}</td>
               <td>${metricValue(event.rssi ?? raw.rssi)}</td>
+              <td>${escapeHtml(telemetryLocationTableText(event))}</td>
             </tr>
           `;
         }).join("");
@@ -1232,12 +2296,13 @@
       function renderEvents() {
         const events = (state.recognition_events || []).filter(isKnownRecognitionEvent).filter(matchesSelectedPerson);
         $("event-count").textContent = `${events.length}`;
+        updateHistoryToggle("toggle-recognition-history", events.length, state.recognitionExpanded);
         const body = $("events");
         if (!events.length) {
           body.innerHTML = '<tr><td class="empty" colspan="5">No events</td></tr>';
           return;
         }
-        body.innerHTML = events.slice(0, 50).map((event) => {
+        body.innerHTML = visibleHistory(events, state.recognitionExpanded).map((event) => {
           const identity = event.name ? `${event.name}${event.identity_confidence == null ? "" : ` ${Number(event.identity_confidence).toFixed(1)}%`}` : "-";
           const emotion = event.emotion ? `${event.emotion}${event.emotion_confidence == null ? "" : ` ${Number(event.emotion_confidence).toFixed(1)}%`}` : "-";
           return `
@@ -1252,7 +2317,360 @@
         }).join("");
       }
 
+      function latestTelemetry() {
+        return (state.telemetry || [])[0] || null;
+      }
+
+      function telemetryValue(event, key) {
+        if (!event) return null;
+        const raw = event.telemetry || {};
+        return event[key] ?? raw[key];
+      }
+
+      function englishLocationPart(value) {
+        const text = String(value || "").replace(/^中国/, "").replace(/省$|市$|自治区$|壮族自治区$|回族自治区$|维吾尔自治区$/g, "").trim();
+        const map = {
+          北京: "Beijing", 上海: "Shanghai", 天津: "Tianjin", 重庆: "Chongqing",
+          广东: "Guangdong", 广州: "Guangzhou", 深圳: "Shenzhen", 佛山: "Foshan", 东莞: "Dongguan", 珠海: "Zhuhai", 中山: "Zhongshan",
+          浙江: "Zhejiang", 杭州: "Hangzhou", 宁波: "Ningbo", 温州: "Wenzhou",
+          江苏: "Jiangsu", 南京: "Nanjing", 苏州: "Suzhou", 无锡: "Wuxi",
+          福建: "Fujian", 福州: "Fuzhou", 厦门: "Xiamen", 泉州: "Quanzhou",
+          山东: "Shandong", 济南: "Jinan", 青岛: "Qingdao",
+          河南: "Henan", 郑州: "Zhengzhou", 湖北: "Hubei", 武汉: "Wuhan", 湖南: "Hunan", 长沙: "Changsha",
+          四川: "Sichuan", 成都: "Chengdu", 陕西: "Shaanxi", 西安: "Xi'an",
+          辽宁: "Liaoning", 沈阳: "Shenyang", 大连: "Dalian", 吉林: "Jilin", 长春: "Changchun", 黑龙江: "Heilongjiang", 哈尔滨: "Harbin",
+          安徽: "Anhui", 合肥: "Hefei", 江西: "Jiangxi", 南昌: "Nanchang", 河北: "Hebei", 石家庄: "Shijiazhuang",
+          山西: "Shanxi", 太原: "Taiyuan", 云南: "Yunnan", 昆明: "Kunming", 贵州: "Guizhou", 贵阳: "Guiyang",
+          广西: "Guangxi", 南宁: "Nanning", 海南: "Hainan", 海口: "Haikou", 甘肃: "Gansu", 兰州: "Lanzhou",
+          新疆: "Xinjiang", 乌鲁木齐: "Urumqi", 内蒙古: "Inner Mongolia", 呼和浩特: "Hohhot", 宁夏: "Ningxia", 银川: "Yinchuan",
+          青海: "Qinghai", 西宁: "Xining", 西藏: "Tibet", 拉萨: "Lhasa", 香港: "Hong Kong", 澳门: "Macau", 台湾: "Taiwan", 台北: "Taipei"
+        };
+        return map[text] || text;
+      }
+
+      function telemetryLocationText(event) {
+        const raw = (event && event.telemetry) || {};
+        const location = raw.location || event.location || {};
+        if (typeof location === "string") {
+          const clean = location.replace(/\s*\([^)]*\)\s*$/, "").replace(/^中国\s*/, "").trim();
+          if (!clean || clean === "unknown" || clean === "lookup_failed") return "-";
+          return clean.split(/\s+/).map(englishLocationPart).filter(Boolean).join(" ") || "-";
+        }
+        const province = englishLocationPart(location.province);
+        const city = englishLocationPart(location.city);
+        const address = [province, city].filter(Boolean).join(" ") || String(location.address || "").replace(/\s*\([^)]*\)\s*$/, "").replace(/^中国\s*/, "").split(/\s+/).map(englishLocationPart).filter(Boolean).join(" ");
+        return address && address !== "unknown" && address !== "lookup_failed" ? address : "-";
+      }
+
+      function telemetryLocationTableText(event) {
+        const raw = (event && event.telemetry) || {};
+        const location = raw.location || event.location || {};
+        if (typeof location === "string") {
+          const clean = location.replace(/\s*\([^)]*\)\s*$/, "").trim();
+          return clean && clean !== "unknown" && clean !== "lookup_failed" ? clean : "-";
+        }
+        const country = String(location.country || "").trim().replace(/^China$/, "中国");
+        const province = String(location.province || "").trim()
+          .replace(/^Guangdong Province$/, "广东省")
+          .replace(/^Guangdong$/, "广东省");
+        const city = String(location.city || "").trim()
+          .replace(/^Guangzhou$/, "广州");
+        const district = String(location.district || "").trim();
+        const parts = [country, province, city, district].filter(Boolean);
+        if (parts.length) return parts.join(" ");
+        const address = String(location.address || "").replace(/\s*\([^)]*\)\s*$/, "").trim();
+        return address && address !== "unknown" && address !== "lookup_failed" ? address : "-";
+      }
+
+      function dominantEmotionText(person) {
+        if (!person || !person.dominant_emotion) return "-";
+        const dominant = person.dominant_emotion;
+        return `${dominant.label || "-"} ${Number(dominant.weighted_pct || 0).toFixed(1)}%`;
+      }
+
+      function emotionShareText(person) {
+        const emotions = (person && person.emotions) || [];
+        if (!emotions.length) return "暂无有效识别记录";
+        return emotions.slice(0, 2).map((emotion) => `${emotion.label} ${Number(emotion.weighted_pct || 0).toFixed(1)}%`).join(" · ");
+      }
+
+      function renderSmartDashboard() {
+        const telemetry = latestTelemetry();
+        const temp = telemetryValue(telemetry, "temperature");
+        const humidity = telemetryValue(telemetry, "humidity");
+        const rssi = telemetryValue(telemetry, "rssi");
+        $("smart-temp-value").textContent = temp == null ? "-" : `${Number(temp).toFixed(1)}℃`;
+        $("smart-telemetry-meta").textContent = `Humidity ${humidity == null ? "-" : `${Number(humidity).toFixed(1)}%`} · RSSI ${rssi == null ? "-" : Number(rssi).toFixed(0)}`;
+        $("smart-telemetry-location").textContent = `Location ${telemetryLocationText(telemetry)}`;
+
+        const devices = state.devices || [];
+        const onlineCount = devices.filter((device) => device.online).length;
+        $("smart-device-count").textContent = `${devices.length}`;
+        $("smart-online-summary").textContent = `${onlineCount}/${devices.length || 0} 设备在线`;
+        $("smart-online-summary").className = `smart-pill ${onlineCount === devices.length && devices.length ? "primary" : ""}`;
+        $("smart-recognition-summary").textContent = `识别 ${((state.recognition_events || []).filter(isKnownRecognitionEvent)).length} 条`;
+
+        const firstPerson = (state.people || [])[0];
+        $("smart-emotion-status").textContent = firstPerson ? "已记录" : "No Data";
+        $("smart-emotion-meta").textContent = firstPerson ? `${firstPerson.name} · ${emotionShareText(firstPerson)}` : "暂无有效识别记录";
+
+        const conversations = state.conversation_events || [];
+        const latestConversation = conversations[0];
+        $("smart-conversation-status").textContent = conversations.length ? "已记录" : "待记录";
+        $("smart-conversation-status").className = `pill ${conversations.length ? "online" : "neutral"}`;
+        $("smart-conversation-meta").textContent = latestConversation
+          ? `${conversationSpeakerLabel(latestConversation.speaker)}：${latestConversation.text}`
+          : "等待小智实时上传对话";
+
+        const visualFall = state.visualFall || {};
+        const wifiFall = state.wifiFall || {};
+        const anyFall = Boolean(visualFall.detected || wifiFall.detected);
+        $("smart-fall-status").textContent = anyFall ? "人员摔倒" : "正常";
+        $("smart-fall-status").className = `pill ${anyFall ? "offline" : "online"}`;
+        $("smart-visual-fall-row").classList.toggle("fall", Boolean(visualFall.detected));
+        $("smart-wifi-fall-row").classList.toggle("fall", Boolean(wifiFall.detected));
+        $("smart-visual-fall-text").textContent = visualFall.detected ? "人员摔倒" : "正常";
+        $("smart-wifi-fall-text").textContent = wifiFall.detected ? "人员摔倒" : "正常";
+
+        const smartDevices = $("smart-devices");
+        if (!devices.length) {
+          smartDevices.innerHTML = '<div class="empty">No devices</div>';
+        } else {
+          smartDevices.innerHTML = devices.map((device) => `
+            <div class="smart-device-row">
+              <strong class="smart-device-name">${escapeHtml(device.display_name || device.device_id)}<span class="smart-device-id">${escapeHtml(device.device_id || "-")}</span></strong>
+              <span class="smart-device-role">${escapeHtml(device.role || "-")}</span>
+              <span class="pill ${device.online ? "online" : "offline"}">${device.online ? "Online" : "Offline"}</span>
+            </div>
+          `).join("");
+        }
+      }
+
+      function telemetryDetailHtml() {
+        const telemetry = state.telemetry || [];
+        const visibleTelemetry = visibleHistory(telemetry, state.smartTelemetryExpanded);
+        const rows = telemetry.length ? visibleTelemetry.map((event) => {
+          const raw = event.telemetry || {};
+          return `
+            <tr class="telemetry-row">
+              <td>${timeText(event.ts_ms)}<button class="telemetry-delete-button" type="button" data-clear-telemetry="${event.id}" title="Delete this record" aria-label="Delete this telemetry record">🗑</button></td>
+              <td class="mono">${escapeHtml(event.device_id || "-")}</td>
+              <td>${metricValue(event.temperature ?? raw.temperature, "℃")}</td>
+              <td>${metricValue(event.humidity ?? raw.humidity, "%")}</td>
+              <td>${metricValue(event.light ?? raw.light)}</td>
+              <td>${metricValue(event.rssi ?? raw.rssi)}</td>
+              <td>${escapeHtml(telemetryLocationTableText(event))}</td>
+            </tr>
+          `;
+        }).join("") : '<tr><td class="empty" colspan="7">No telemetry</td></tr>';
+        return `
+          <div class="telemetry-admin-bar">
+            <input id="telemetry-admin-token" type="password" placeholder="Admin token for clearing" autocomplete="off" value="${escapeHtml(localStorage.getItem("asdun_admin_token") || "")}" />
+            <button id="telemetry-admin-action" type="button">${state.telemetryAdminVerified ? "Clear" : "Confirm"}</button>
+          </div>
+          <div class="section-actions" style="margin-bottom:12px">
+            <button class="text-button history-toggle" type="button" data-smart-toggle="smartTelemetryExpanded" ${telemetry.length <= 5 ? "hidden" : ""}>${state.smartTelemetryExpanded ? "Collapse" : `Show all ${telemetry.length}`}</button>
+            <button class="danger-button" type="button" data-clear-all-telemetry>Clear all</button>
+            <span class="muted">${state.smartTelemetryExpanded ? telemetry.length : Math.min(telemetry.length, 5)} / ${telemetry.length}</span>
+          </div>
+          <div class="detail-table-wrap">
+            <table>
+              <thead><tr><th>Time</th><th>Device</th><th>Temperature</th><th>Humidity</th><th>Light</th><th>RSSI</th><th>Location</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+          <div class="telemetry-clear-footer">
+            <span id="telemetry-clear-status" class="status-text">${escapeHtml(state.telemetryClearStatus || "")}</span>
+          </div>
+        `;
+      }
+
+      function commandDetailHtml() {
+        const devices = state.devices || [];
+        const selectedDevice = state.smartCommandDevice || devices.find((device) => device.device_id === "esp32-01")?.device_id || devices[0]?.device_id || "";
+        state.smartCommandDevice = selectedDevice;
+        const deviceOptions = devices.map((device) => `<option value="${escapeHtml(device.device_id)}" ${device.device_id === selectedDevice ? "selected" : ""}>${escapeHtml(device.display_name || device.device_id)}</option>`).join("");
+        const commands = state.commands || [];
+        const latestCommand = commands.find((command) => command.device_id === selectedDevice);
+        const latestText = latestCommand
+          ? `Latest: ${latestCommand.command || "-"} · ${latestCommand.status || "-"} · ${commandSummary(latestCommand)}`
+          : "Please select ESP32, then click Connect.";
+        return `
+          <div class="esp32-console-panel">
+            <div class="smart-command-form">
+              <select id="smart-command-device" aria-label="Command device">${deviceOptions}</select>
+              <input id="smart-admin-token" type="password" placeholder="Admin token" autocomplete="off" value="${escapeHtml(localStorage.getItem("asdun_admin_token") || "")}" />
+              <div class="smart-console-actions" style="margin-top:0">
+                <button class="quick-button" type="button" data-smart-command="connect" data-smart-payload="{}">Connect</button>
+                <button class="quick-button" type="button" data-smart-command="start_work" data-smart-payload="{}">Start work</button>
+                <button class="quick-button" type="button" data-smart-command="stop_work" data-smart-payload="{}">Stop work</button>
+              </div>
+            </div>
+            <div id="smart-command-status" class="esp32-console-status">${escapeHtml(latestText)}</div>
+            <p class="esp32-console-note">ESP32 上电后默认待机。先点击 Connect 测试连接，连接正常后点击 Start work 开始温湿度采集和上传；点击 Stop work 后停止采集和上传。</p>
+          </div>
+        `;
+      }
+
+      function conversationSpeakerLabel(speaker) {
+        if (speaker === "assistant") return "小智";
+        if (speaker === "user") return "我";
+        return "系统";
+      }
+
+      function conversationDetailHtml() {
+        const events = state.conversation_events || [];
+        const visibleEvents = visibleHistory(events, state.smartConversationExpanded);
+        const messages = events.length ? visibleEvents.slice().reverse().map((event) => {
+          const speaker = event.speaker === "assistant" ? "assistant" : event.speaker === "user" ? "user" : "system";
+          return `
+            <div class="chat-message ${speaker}">
+              <div class="chat-bubble">
+                <div class="chat-meta">
+                  <strong>${conversationSpeakerLabel(event.speaker)}</strong>
+                  <span>${timeText(event.ts_ms)}</span>
+                </div>
+                <div class="chat-text">${escapeHtml(event.text || "-")}</div>
+              </div>
+            </div>
+          `;
+        }).join("") : '<div class="empty">暂无对话记录</div>';
+        return `
+          <div class="section-actions" style="margin-bottom:12px">
+            <button class="text-button history-toggle" type="button" data-smart-toggle="smartConversationExpanded" ${events.length <= 5 ? "hidden" : ""}>${state.smartConversationExpanded ? "Collapse" : `Show all ${events.length}`}</button>
+            <span class="muted">${state.smartConversationExpanded ? events.length : Math.min(events.length, 5)} / ${events.length}</span>
+          </div>
+          <div class="chat-log">${messages}</div>
+        `;
+      }
+
+      function emotionDetailHtml() {
+        const people = state.people || [];
+        const visiblePeople = visibleHistory(people, state.smartPeopleExpanded);
+        const peopleRows = people.length ? visiblePeople.map((person) => `
+          <tr>
+            <td><strong>${escapeHtml(person.name || "-")}</strong><br><span class="mono muted">${escapeHtml((person.sources || []).join(", ") || "-")}</span></td>
+            <td>${Number(person.event_count || 0)}</td>
+            <td>${Number(person.avg_identity_confidence || 0).toFixed(1)}%</td>
+            <td>${escapeHtml(dominantEmotionText(person))}</td>
+            <td>${escapeHtml(emotionShareText(person))}</td>
+            <td>${timeText(person.last_seen_ms)}</td>
+            <td><button type="button" data-report-person="${escapeHtml(person.name || "")}">心情日报</button></td>
+          </tr>
+        `).join("") : '<tr><td class="empty" colspan="7">No people</td></tr>';
+        const events = (state.recognition_events || []).filter(isKnownRecognitionEvent).filter(matchesSelectedPerson);
+        const visibleEvents = visibleHistory(events, state.smartRecognitionExpanded);
+        const eventRows = events.length ? visibleEvents.map((event) => {
+          const identity = event.name ? `${event.name}${event.identity_confidence == null ? "" : ` ${Number(event.identity_confidence).toFixed(1)}%`}` : "-";
+          const emotion = event.emotion ? `${event.emotion}${event.emotion_confidence == null ? "" : ` ${Number(event.emotion_confidence).toFixed(1)}%`}` : "-";
+          return `
+            <tr>
+              <td>${timeText(event.ts_ms)}</td>
+              <td class="mono">${escapeHtml(event.source_device || "-")}</td>
+              <td>${escapeHtml(identity)}</td>
+              <td>${escapeHtml(emotion)}</td>
+              <td class="mono">track=${event.track_id ?? "-"} frame=${event.frame_id ?? "-"}</td>
+            </tr>
+          `;
+        }).join("") : '<tr><td class="empty" colspan="5">No recognition</td></tr>';
+        return `
+          <div class="detail-section">
+            <h3>People</h3>
+            <div class="section-actions" style="margin-bottom:12px">
+              <button class="text-button history-toggle" type="button" data-smart-toggle="smartPeopleExpanded" ${people.length <= 5 ? "hidden" : ""}>${state.smartPeopleExpanded ? "Collapse" : `Show all ${people.length}`}</button>
+              <span class="muted">${state.smartPeopleExpanded ? people.length : Math.min(people.length, 5)} / ${people.length}</span>
+            </div>
+            <div class="detail-table-wrap"><table><thead><tr><th>Person</th><th>Records</th><th>Identity Avg</th><th>Dominant Emotion</th><th>Emotion Share</th><th>Last Seen</th><th>Report</th></tr></thead><tbody>${peopleRows}</tbody></table></div>
+          </div>
+          <div class="detail-section">
+            <h3>Recognition</h3>
+            <div class="section-actions" style="margin-bottom:12px">
+              <button class="text-button history-toggle" type="button" data-smart-toggle="smartRecognitionExpanded" ${events.length <= 5 ? "hidden" : ""}>${state.smartRecognitionExpanded ? "Collapse" : `Show all ${events.length}`}</button>
+              <span class="muted">${state.smartRecognitionExpanded ? events.length : Math.min(events.length, 5)} / ${events.length}</span>
+            </div>
+            <div class="detail-table-wrap"><table><thead><tr><th>Time</th><th>Source</th><th>Identity</th><th>Emotion</th><th>Track</th></tr></thead><tbody>${eventRows}</tbody></table></div>
+          </div>
+        `;
+      }
+
+      function renderSmartDetail() {
+        if (!state.activeSmartDetail) return;
+        const titles = {
+          telemetry: ["Telemetry", "ESP32 温湿度、光照和 RSSI 实时上传记录"],
+          commands: ["控制台", "选择设备并控制 ESP32 温湿度采集工作状态"],
+          conversation: ["对话日志", "我和小智的实时聊天记录"],
+          emotion: ["情绪助手", "People 情绪统计与 Recognition 识别记录"],
+        };
+        const title = titles[state.activeSmartDetail];
+        if (!title) return;
+        $("smart-detail-title").textContent = title[0];
+        $("smart-detail-subtitle").textContent = title[1];
+        $("smart-detail-content").innerHTML =
+          state.activeSmartDetail === "telemetry" ? telemetryDetailHtml() :
+          state.activeSmartDetail === "commands" ? commandDetailHtml() :
+          state.activeSmartDetail === "conversation" ? conversationDetailHtml() :
+          emotionDetailHtml();
+      }
+
+      function openSmartDetail(kind) {
+        state.activeSmartDetail = kind;
+        renderSmartDetail();
+        $("smart-detail-modal").hidden = false;
+      }
+      window.openSmartDetail = openSmartDetail;
+
+      function closeSmartDetail() {
+        $("smart-detail-modal").hidden = true;
+        state.activeSmartDetail = "";
+      }
+
+      async function sendSmartCommand(commandOverride, payloadOverride) {
+        const deviceId = $("smart-command-device")?.value || "";
+        const commandName = String(commandOverride || "").trim();
+        const rawPayload = payloadOverride == null ? "{}" : JSON.stringify(payloadOverride);
+        const adminToken = String($("smart-admin-token")?.value || localStorage.getItem("asdun_admin_token") || $("admin-token")?.value || "").trim();
+        if (!deviceId || !commandName) {
+          $("smart-command-status").textContent = "Missing device or command";
+          return;
+        }
+        if (!adminToken) {
+          $("smart-command-status").textContent = "Admin token required.";
+          return;
+        }
+        localStorage.setItem("asdun_admin_token", adminToken);
+        let payload = {};
+        if (rawPayload) {
+          try {
+            payload = JSON.parse(rawPayload);
+          } catch {
+            $("smart-command-status").textContent = "Payload JSON error";
+            return;
+          }
+        }
+        const res = await fetch("/api/commands", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-ASDUN-Admin-Token": adminToken,
+          },
+          body: JSON.stringify({ device_id: deviceId, command: commandName, payload }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          $("smart-command-status").textContent = data.detail?.error || data.error || "Command failed";
+          return;
+        }
+        $("smart-command-status").textContent = `Sent ${commandName}, waiting for ESP32...`;
+        const index = state.commands.findIndex((item) => item.command_id === data.command.command_id);
+        if (index >= 0) state.commands[index] = data.command;
+        else state.commands.unshift(data.command);
+        renderAll();
+      }
+
       function renderAll() {
+        renderWifiFallStatus();
+        renderVisualFallStatus();
+        renderSmartDashboard();
         renderDevices();
         renderCommandDevices();
         renderCommands();
@@ -1260,7 +2678,9 @@
         renderPersonFilter();
         renderPeople();
         renderEvents();
+        renderSmartDetail();
         $("updated").textContent = `Updated ${new Date().toLocaleTimeString()}`;
+        $("header-ws-text").textContent = `${$("ws-state").textContent} · ${$("updated").textContent}`;
       }
 
       async function loadRecognitionEvents() {
@@ -1283,7 +2703,10 @@
         state.devices = data.devices || [];
         state.commands = data.commands || [];
         state.telemetry = data.telemetry || [];
+        state.conversation_events = data.conversation_events || [];
         state.people = data.people || [];
+        resetWifiFallStatus();
+        resetVisualFallStatus();
         if (state.selectedPerson) {
           await loadRecognitionEvents();
         } else {
@@ -1292,6 +2715,67 @@
         renderAll();
       }
 
+      function adminHeaders() {
+        const headers = {};
+        const adminToken = String(localStorage.getItem("asdun_admin_token") || "").trim();
+        if (adminToken) headers["X-ASDUN-Admin-Token"] = adminToken;
+        return headers;
+      }
+
+      async function clearTelemetryEvent(eventId) {
+        const id = Number(eventId);
+        if (!Number.isFinite(id)) return;
+        if (!state.telemetryAdminVerified) {
+          state.telemetryClearStatus = "Please confirm admin token first.";
+          renderSmartDetail();
+          return;
+        }
+        if (!window.confirm("Delete this telemetry record?")) return;
+        state.telemetryClearStatus = "";
+        const res = await fetch(`/api/telemetry/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+          headers: adminHeaders(),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          if (res.status === 403) {
+            clearSavedAdminToken();
+          }
+          state.telemetryClearStatus = data.detail?.error || data.error || `Clear failed (${res.status})`;
+          renderSmartDetail();
+          return;
+        }
+        state.telemetry = (state.telemetry || []).filter((event) => Number(event.id) !== id);
+        state.telemetryClearStatus = "Cleared";
+        renderAll();
+      }
+
+      async function clearAllTelemetry() {
+        if (!(state.telemetry || []).length) return;
+        if (!state.telemetryAdminVerified) {
+          state.telemetryClearStatus = "Please confirm admin token first.";
+          renderSmartDetail();
+          return;
+        }
+        if (!window.confirm("Clear all telemetry records?")) return;
+        state.telemetryClearStatus = "";
+        const res = await fetch("/api/telemetry", {
+          method: "DELETE",
+          headers: adminHeaders(),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          if (res.status === 403) {
+            clearSavedAdminToken();
+          }
+          state.telemetryClearStatus = data.detail?.error || data.error || `Clear all failed (${res.status})`;
+          renderSmartDetail();
+          return;
+        }
+        state.telemetry = [];
+        state.telemetryClearStatus = `Cleared ${data.deleted || 0} records`;
+        renderAll();
+      }
       async function sendCommand(commandOverride, payloadOverride) {
         const deviceId = $("command-device").value;
         const commandName = String(commandOverride || $("command-name").value).trim();
@@ -1345,6 +2829,8 @@
       function setSocketState(label, kind) {
         $("ws-state").textContent = label;
         $("ws-dot").className = `dot ${kind || ""}`;
+        $("header-ws-dot").className = `dot ${kind || ""}`;
+        $("header-ws-text").textContent = `${label} · ${$("updated").textContent || "Not updated"}`;
       }
 
       function openSocket() {
@@ -1363,7 +2849,10 @@
             state.devices = message.devices || [];
             state.commands = message.commands || [];
             state.telemetry = message.telemetry || [];
+            state.conversation_events = message.conversation_events || [];
             state.people = message.people || [];
+            resetWifiFallStatus();
+            resetVisualFallStatus();
             if (state.selectedPerson) {
               loadRecognitionEvents()
                 .then(renderAll)
@@ -1377,6 +2866,15 @@
             const index = state.devices.findIndex((item) => item.device_id === device.device_id);
             if (index >= 0) state.devices[index] = device;
             else state.devices.unshift(device);
+            if (wifiFallCandidate(device)) {
+              state.wifiFall = wifiFallStatusFromDevice(device);
+            }
+            if (visualFallCandidate(device)) {
+              state.visualFall = visualFallStatusFromDevice(device);
+            }
+          }
+          if (message.type === "fall_event") {
+            state.visualFall = visualFallStatusFromEvent(message.event || {});
           }
           if (message.type === "command" || message.type === "command_result") {
             const command = message.command;
@@ -1389,11 +2887,22 @@
             state.telemetry.unshift(message.event);
             state.telemetry = state.telemetry.slice(0, 500);
           }
+          if (message.type === "telemetry_deleted") {
+            state.telemetry = (state.telemetry || []).filter((event) => Number(event.id) !== Number(message.id));
+          }
+          if (message.type === "telemetry_cleared") {
+            const deviceId = String(message.device_id || "");
+            state.telemetry = deviceId ? (state.telemetry || []).filter((event) => event.device_id !== deviceId) : [];
+          }
           if (message.type === "recognition_event") {
             if (matchesSelectedPerson(message.event)) {
               state.recognition_events.unshift(message.event);
               state.recognition_events = state.recognition_events.slice(0, 500);
             }
+          }
+          if (message.type === "conversation_event") {
+            state.conversation_events.unshift(message.event);
+            state.conversation_events = state.conversation_events.slice(0, 500);
           }
           if (message.type === "people") {
             state.people = message.people || [];
@@ -1406,12 +2915,33 @@
       $("admin-token").value = savedAdminToken;
       $("admin-token").addEventListener("input", saveAdminToken);
       $("clear-admin-token").addEventListener("click", () => {
-        $("admin-token").value = "";
-        saveAdminToken();
+        clearSavedAdminToken();
         $("command-status").textContent = "Admin token cleared";
       });
       $("send-command").addEventListener("click", () => {
         sendCommand().catch(() => setSocketState("HTTP error", "bad"));
+      });
+      $("toggle-telemetry-history").addEventListener("click", () => {
+        state.telemetryExpanded = !state.telemetryExpanded;
+        renderTelemetry();
+      });
+      $("clear-all-telemetry").addEventListener("click", () => {
+        clearAllTelemetry().catch((error) => {
+          state.telemetryClearStatus = error.message || "Clear all failed";
+          renderAll();
+        });
+      });
+      $("telemetry").addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-clear-telemetry]");
+        if (!button) return;
+        clearTelemetryEvent(button.getAttribute("data-clear-telemetry")).catch((error) => {
+          state.telemetryClearStatus = error.message || "Clear failed";
+          renderAll();
+        });
+      });
+      $("toggle-recognition-history").addEventListener("click", () => {
+        state.recognitionExpanded = !state.recognitionExpanded;
+        renderEvents();
       });
       document.querySelector(".command-quick").addEventListener("click", (event) => {
         const button = event.target.closest("button[data-quick-command]");
@@ -1433,6 +2963,106 @@
       $("report-modal").addEventListener("click", (event) => {
         if (event.target.matches("[data-close-report]")) closeMoodReport();
       });
+      $("close-wifi-fall-alert").addEventListener("click", closeWifiFallAlert);
+      $("wifi-fall-alert").addEventListener("click", (event) => {
+        if (event.target.matches("[data-close-wifi-fall-alert]")) closeWifiFallAlert();
+      });
+      $("close-visual-fall-alert").addEventListener("click", closeVisualFallAlert);
+      $("visual-fall-alert").addEventListener("click", (event) => {
+        if (event.target.matches("[data-close-visual-fall-alert]")) closeVisualFallAlert();
+      });
+      document.querySelectorAll("[data-detail]").forEach((card) => {
+        card.addEventListener("click", () => openSmartDetail(card.getAttribute("data-detail") || ""));
+        card.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openSmartDetail(card.getAttribute("data-detail") || "");
+          }
+        });
+      });
+      document.querySelectorAll("[data-open-smart-detail]").forEach((trigger) => {
+        trigger.addEventListener("click", (event) => {
+          event.stopPropagation();
+          openSmartDetail(trigger.getAttribute("data-open-smart-detail") || "");
+        });
+      });
+      document.addEventListener("click", (event) => {
+        const consoleCard = event.target.closest("#smart-console-card");
+        if (!consoleCard) return;
+        event.preventDefault();
+        openSmartDetail("commands");
+      });
+      $("smart-detail-modal").addEventListener("click", (event) => {
+        if (event.target.matches("[data-close-smart-detail]")) closeSmartDetail();
+        if (event.target.closest("#telemetry-admin-action")) {
+          handleTelemetryAdminAction();
+          return;
+        }
+        const reportButton = event.target.closest("button[data-report-person]");
+        if (reportButton) {
+          openMoodReport(reportButton.getAttribute("data-report-person") || "").catch(() => setSocketState("HTTP error", "bad"));
+        }
+        const clearTelemetryButton = event.target.closest("button[data-clear-telemetry]");
+        if (clearTelemetryButton) {
+          clearTelemetryEvent(clearTelemetryButton.getAttribute("data-clear-telemetry")).catch((error) => {
+            state.telemetryClearStatus = error.message || "Clear failed";
+            renderSmartDetail();
+          });
+          return;
+        }
+        const clearAllTelemetryButton = event.target.closest("button[data-clear-all-telemetry]");
+        if (clearAllTelemetryButton) {
+          clearAllTelemetry().catch((error) => {
+            state.telemetryClearStatus = error.message || "Clear all failed";
+            renderSmartDetail();
+          });
+          return;
+        }
+        const toggleButton = event.target.closest("button[data-smart-toggle]");
+        if (toggleButton) {
+          const key = toggleButton.getAttribute("data-smart-toggle") || "";
+          if (Object.prototype.hasOwnProperty.call(state, key)) {
+            state[key] = !state[key];
+            renderSmartDetail();
+          }
+        }
+        const smartCommandButton = event.target.closest("#smart-send-command");
+        if (smartCommandButton) {
+          sendSmartCommand().catch(() => setSocketState("HTTP error", "bad"));
+        }
+        const commandDevice = event.target.closest("#smart-command-device");
+        if (commandDevice) {
+          state.smartCommandDevice = commandDevice.value || "";
+          renderSmartDetail();
+        }
+        const quickButton = event.target.closest("button[data-smart-command]");
+        if (quickButton) {
+          let payload = {};
+          try {
+            payload = JSON.parse(quickButton.getAttribute("data-smart-payload") || "{}");
+          } catch {
+            $("smart-command-status").textContent = "Quick payload JSON error";
+            return;
+          }
+          sendSmartCommand(quickButton.getAttribute("data-smart-command") || "", payload).catch(() => setSocketState("HTTP error", "bad"));
+        }
+      });
+      $("smart-detail-modal").addEventListener("input", (event) => {
+        if (!event.target.matches("#telemetry-admin-token")) return;
+        const saved = String(localStorage.getItem("asdun_admin_token") || "");
+        if (String(event.target.value || "") !== saved) {
+          state.telemetryAdminVerified = false;
+          state.telemetryClearStatus = "";
+          const action = $("telemetry-admin-action");
+          if (action) action.textContent = "Confirm";
+        }
+      });
+      $("smart-detail-modal").addEventListener("change", (event) => {
+        if (!event.target.matches("#smart-command-device")) return;
+        state.smartCommandDevice = event.target.value || "";
+        renderSmartDetail();
+      });
+      $("close-smart-detail").addEventListener("click", closeSmartDetail);
       $("person-filter").addEventListener("change", (event) => {
         selectPerson(event.target.value).catch(() => setSocketState("HTTP error", "bad"));
       });
@@ -1453,3 +3083,6 @@
     </script>
   </body>
 </html>
+
+
+

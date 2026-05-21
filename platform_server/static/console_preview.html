@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ESP32 Console Preview</title>
+    <style>
+      :root {
+        --blue: #78a1ef;
+        --deep: #151b2d;
+        --muted: #81899a;
+        --line: #edf0f6;
+        --soft: #f7f9fd;
+        --ok: #2f9b65;
+        --warn: #4b7cf5;
+        --stop: #b42318;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+        margin: 0;
+      }
+
+      body {
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+        background:
+          linear-gradient(180deg, var(--blue) 0 48%, #e9f3ff 48% 100%);
+        color: var(--deep);
+        font-family: "Aptos", "Microsoft YaHei", Arial, sans-serif;
+      }
+
+      .phone-frame {
+        width: min(390px, calc(100vw - 28px));
+        aspect-ratio: 390 / 760;
+        padding: 10px;
+        border-radius: 48px;
+        background: #0b0d14;
+        box-shadow:
+          0 28px 70px rgba(12, 18, 35, 0.28),
+          inset 0 0 0 2px rgba(255, 255, 255, 0.18);
+      }
+
+      .phone-screen {
+        position: relative;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        height: 100%;
+        overflow: hidden;
+        border-radius: 39px;
+        background: linear-gradient(180deg, #ffffff, #fbfcff 70%, #f7f9fd);
+      }
+
+      .status-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 40px;
+        padding: 10px 24px 0;
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .dynamic-island {
+        position: absolute;
+        left: 50%;
+        top: 13px;
+        width: 104px;
+        height: 28px;
+        transform: translateX(-50%);
+        border-radius: 999px;
+        background: #0b0d14;
+      }
+
+      .signal {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+
+      .bars {
+        display: inline-grid;
+        grid-template-columns: repeat(4, 3px);
+        align-items: end;
+        gap: 2px;
+        height: 14px;
+      }
+
+      .bars span {
+        width: 3px;
+        border-radius: 99px;
+        background: #0b0d14;
+      }
+
+      .bars span:nth-child(1) { height: 5px; }
+      .bars span:nth-child(2) { height: 8px; }
+      .bars span:nth-child(3) { height: 11px; }
+      .bars span:nth-child(4) { height: 14px; }
+
+      .battery {
+        width: 22px;
+        height: 11px;
+        border: 2px solid #0b0d14;
+        border-radius: 4px;
+      }
+
+      .app {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 10px 24px 22px;
+      }
+
+      .welcome {
+        margin-top: 8px;
+        color: #8d94a3;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .room {
+        margin-top: 4px;
+        font-size: 18px;
+        font-weight: 900;
+      }
+
+      .radar {
+        position: relative;
+        width: 260px;
+        height: 260px;
+        margin-top: 38px;
+        border-radius: 50%;
+        background:
+          conic-gradient(from 0deg, rgba(120, 161, 239, 0.18), rgba(120, 161, 239, 0.04), rgba(120, 161, 239, 0.18)),
+          radial-gradient(circle, rgba(120, 161, 239, 0.13), rgba(120, 161, 239, 0.03) 60%, transparent 61%);
+      }
+
+      .radar::before,
+      .radar::after {
+        content: "";
+        position: absolute;
+        inset: 50%;
+        width: 1px;
+        height: 100%;
+        background: rgba(120, 161, 239, 0.13);
+        transform-origin: top;
+      }
+
+      .radar::before {
+        transform: rotate(0deg) translateY(-50%);
+      }
+
+      .radar::after {
+        transform: rotate(90deg) translateY(-50%);
+      }
+
+      .device-bubble {
+        position: absolute;
+        display: grid;
+        place-items: center;
+        width: 78px;
+        height: 78px;
+        border: 1px solid rgba(220, 226, 238, 0.95);
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 16px 36px rgba(24, 32, 46, 0.1);
+      }
+
+      .device-bubble.main {
+        left: 92px;
+        top: 84px;
+        width: 96px;
+        height: 96px;
+      }
+
+      .device-bubble.small-a {
+        left: -8px;
+        top: 76px;
+      }
+
+      .device-bubble.small-b {
+        right: 12px;
+        top: 16px;
+      }
+
+      .device-bubble.small-c {
+        right: 28px;
+        bottom: 35px;
+        width: 64px;
+        height: 64px;
+      }
+
+      .chip-icon {
+        position: relative;
+        width: 44px;
+        height: 58px;
+        border-radius: 16px;
+        background: linear-gradient(180deg, #f5f7fb, #d4dce9);
+        border: 2px solid #d7deeb;
+      }
+
+      .chip-icon::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: -18px;
+        width: 2px;
+        height: 20px;
+        transform: translateX(-50%);
+        background: #7a5d2b;
+      }
+
+      .chip-icon::after {
+        content: "";
+        position: absolute;
+        inset: 13px 11px;
+        border-radius: 8px;
+        background:
+          radial-gradient(circle at 30% 30%, #fff 0 5px, transparent 6px),
+          radial-gradient(circle at 70% 30%, #fff 0 5px, transparent 6px),
+          radial-gradient(circle at 30% 70%, #fff 0 5px, transparent 6px),
+          radial-gradient(circle at 70% 70%, #fff 0 5px, transparent 6px),
+          linear-gradient(145deg, #313a75, #7c86ee);
+      }
+
+      .sensor-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 18px;
+        background: radial-gradient(circle at 35% 30%, #ffffff, #aab5c8 45%, #31384f 100%);
+      }
+
+      .wifi-icon {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        border: 3px solid #88aafa;
+        background: conic-gradient(#88aafa, #f7fbff, #88aafa);
+      }
+
+      .temp-icon {
+        width: 26px;
+        height: 48px;
+        border-radius: 20px;
+        background: linear-gradient(180deg, #8da6ff, #ffcf7a 55%, #ff7b7b);
+      }
+
+      .title {
+        margin: 6px 0 0;
+        text-align: center;
+        font-size: 24px;
+        font-weight: 900;
+      }
+
+      .subtitle {
+        width: min(260px, 100%);
+        margin: 8px auto 0;
+        color: var(--muted);
+        text-align: center;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .controls {
+        width: 100%;
+        margin-top: 22px;
+      }
+
+      .device-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .device-card {
+        display: grid;
+        grid-template-columns: 42px 1fr auto;
+        align-items: center;
+        gap: 12px;
+        min-height: 58px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #ffffff;
+        box-shadow: 0 8px 24px rgba(24, 32, 46, 0.04);
+      }
+
+      .mini-icon {
+        display: grid;
+        place-items: center;
+        width: 38px;
+        height: 38px;
+        border-radius: 14px;
+        background: #f1f5ff;
+        font-size: 18px;
+      }
+
+      .device-name {
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .device-state {
+        margin-top: 2px;
+        color: #7da8ef;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      select,
+      input {
+        width: 100%;
+        height: 38px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #ffffff;
+        padding: 0 10px;
+        color: var(--deep);
+        font: inherit;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .control-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .action-button {
+        min-height: 42px;
+        border: 0;
+        border-radius: 12px;
+        background: #f0f0f3;
+        color: #4d5567;
+        cursor: pointer;
+        font-weight: 900;
+      }
+
+      .action-button.primary {
+        background: linear-gradient(135deg, #6b7cff, #8bb5ff);
+        color: #ffffff;
+      }
+
+      .action-button.danger {
+        grid-column: 1 / -1;
+        background: #f4f4f6;
+        color: #3c4352;
+      }
+
+      .footer-note {
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 11px;
+        text-align: center;
+      }
+
+      @media (max-width: 420px) {
+        body {
+          place-items: start center;
+          padding: 10px 0;
+        }
+
+        .phone-frame {
+          min-height: 720px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="phone-frame">
+      <section class="phone-screen">
+        <div class="dynamic-island" aria-hidden="true"></div>
+        <div class="status-bar">
+          <span>9:41</span>
+          <span class="signal">
+            <span class="bars"><span></span><span></span><span></span><span></span></span>
+            <span class="battery"></span>
+          </span>
+        </div>
+
+        <div class="app">
+          <div class="welcome">Welcome Back</div>
+          <div class="room">ESP32 Console ▾</div>
+
+          <div class="radar" aria-hidden="true">
+            <div class="device-bubble main"><div class="chip-icon"></div></div>
+            <div class="device-bubble small-a"><div class="sensor-icon"></div></div>
+            <div class="device-bubble small-b"><div class="wifi-icon"></div></div>
+            <div class="device-bubble small-c"><div class="temp-icon"></div></div>
+          </div>
+
+          <h1 class="title" id="scan-title">Searching...</h1>
+          <p class="subtitle">Please make sure ESP32 is powered on and connected to Wi-Fi before starting collection.</p>
+
+          <div class="controls">
+            <div class="device-list">
+              <label class="device-card">
+                <span class="mini-icon">◉</span>
+                <span>
+                  <span class="device-name">Target device</span>
+                  <select id="device-select" aria-label="Target device">
+                    <option>esp32-01</option>
+                    <option>wifi-fall-rx</option>
+                    <option>visual-fall-detector</option>
+                  </select>
+                </span>
+                <span class="device-state" id="link-state">Ready</span>
+              </label>
+
+              <label class="device-card">
+                <span class="mini-icon">⌁</span>
+                <span>
+                  <span class="device-name">Admin token</span>
+                  <input id="token-input" type="password" placeholder="Token" value="••••••••" aria-label="Admin token" />
+                </span>
+                <span class="device-state" id="work-state">Standby</span>
+              </label>
+            </div>
+
+            <div class="control-row">
+              <button class="action-button primary" type="button" data-action="connect">Connect</button>
+              <button class="action-button primary" type="button" data-action="start">Start Work</button>
+              <button class="action-button danger" type="button" data-action="stop">Stop Scanning</button>
+            </div>
+            <div class="footer-note" id="status-note">Latest: no command sent yet.</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const scanTitle = document.getElementById("scan-title");
+      const linkState = document.getElementById("link-state");
+      const workState = document.getElementById("work-state");
+      const statusNote = document.getElementById("status-note");
+      const deviceSelect = document.getElementById("device-select");
+
+      document.querySelectorAll("[data-action]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const action = button.getAttribute("data-action");
+          const device = deviceSelect.value;
+          if (action === "connect") {
+            scanTitle.textContent = "Connected";
+            linkState.textContent = "Connected";
+            workState.textContent = "Standby";
+            statusNote.textContent = `Latest: ${device} connected, waiting to start work.`;
+          }
+          if (action === "start") {
+            scanTitle.textContent = "Working...";
+            linkState.textContent = "Online";
+            workState.textContent = "Uploading";
+            statusNote.textContent = `Latest: ${device} is measuring temperature and humidity.`;
+          }
+          if (action === "stop") {
+            scanTitle.textContent = "Stopped";
+            linkState.textContent = "Connected";
+            workState.textContent = "Stopped";
+            statusNote.textContent = `Latest: ${device} stopped collecting telemetry.`;
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

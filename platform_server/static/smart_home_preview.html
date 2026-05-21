@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ASDUN Smart Care Preview</title>
+    <style>
+      :root {
+        --bg: #f5f7fb;
+        --surface: #ffffff;
+        --surface-soft: #eef4ff;
+        --text: #172033;
+        --muted: #6d7890;
+        --line: #dde5f0;
+        --blue: #5c7cff;
+        --green: #39a76d;
+        --red: #e5483f;
+        --amber: #e5a935;
+        --shadow: 0 18px 40px rgba(41, 54, 79, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at 12% 8%, rgba(92, 124, 255, 0.22), transparent 30%),
+          radial-gradient(circle at 88% 12%, rgba(57, 167, 109, 0.18), transparent 28%),
+          radial-gradient(circle at 50% 96%, rgba(255, 183, 120, 0.18), transparent 34%),
+          var(--bg);
+        color: var(--text);
+        font-family: Inter, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+      }
+
+      .page {
+        width: min(1180px, calc(100vw - 36px));
+        margin: 0 auto;
+        padding: 28px 0 42px;
+      }
+
+      .topbar,
+      .hero,
+      .card,
+      .panel {
+        border: 1px solid rgba(255, 255, 255, 0.74);
+        background: rgba(255, 255, 255, 0.68);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.76),
+          0 18px 45px rgba(24, 32, 46, 0.14);
+        backdrop-filter: blur(22px) saturate(1.22);
+        -webkit-backdrop-filter: blur(22px) saturate(1.22);
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 70px;
+        padding: 16px 20px;
+        border-radius: 24px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 800;
+        font-size: 20px;
+      }
+
+      .logo {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        border-radius: 16px;
+        background: linear-gradient(145deg, #5c7cff, #7fc9ff);
+        color: white;
+        font-weight: 900;
+      }
+
+      .live {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--green);
+        box-shadow: 0 0 0 6px rgba(57, 167, 109, 0.14);
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 18px;
+        margin-top: 18px;
+        padding: 28px;
+        border-radius: 30px;
+      }
+
+      h1,
+      h2,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        max-width: 620px;
+        font-size: clamp(32px, 5vw, 58px);
+        line-height: 1.06;
+        letter-spacing: 0;
+      }
+
+      .hero p {
+        max-width: 540px;
+        margin-top: 14px;
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.7;
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 24px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 42px;
+        padding: 0 16px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: white;
+        color: var(--muted);
+        font-weight: 700;
+      }
+
+      .pill.primary {
+        border-color: transparent;
+        background: var(--blue);
+        color: white;
+      }
+
+      .scene-card {
+        display: grid;
+        align-content: space-between;
+        min-height: 230px;
+        padding: 22px;
+        border-radius: 26px;
+        border: 1px solid rgba(255, 255, 255, 0.72);
+        background: linear-gradient(160deg, rgba(238, 244, 255, 0.78), rgba(255, 247, 240, 0.72));
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+      }
+
+      .clickable-card {
+        cursor: pointer;
+        transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+      }
+
+      .clickable-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(92, 124, 255, 0.34);
+        box-shadow: 0 22px 48px rgba(41, 54, 79, 0.16);
+      }
+
+      .scene-top {
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .scene-temp {
+        font-size: 48px;
+        font-weight: 900;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-top: 18px;
+      }
+
+      .card {
+        min-height: 168px;
+        padding: 20px;
+        border-radius: 26px;
+      }
+
+      .card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .icon {
+        display: grid;
+        place-items: center;
+        width: 48px;
+        height: 48px;
+        border-radius: 18px;
+        background: var(--surface-soft);
+        font-size: 22px;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        padding: 0 12px;
+        border-radius: 999px;
+        background: #e9f8ef;
+        color: #257a4c;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .status.warn {
+        background: #fff1ef;
+        color: #b42318;
+      }
+
+      .card h2 {
+        margin-top: 18px;
+        font-size: 20px;
+      }
+
+      .card p {
+        margin-top: 8px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .sub-statuses {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .sub-status {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        min-height: 34px;
+        padding: 0 10px;
+        border-radius: 14px;
+        background: #f6f8fc;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .console-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .console-chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        padding: 0 10px;
+        border: 1px solid #d8e1f2;
+        border-radius: 999px;
+        background: #f7faff;
+        color: #52627f;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .panel {
+        margin-top: 18px;
+        padding: 20px;
+        border-radius: 26px;
+      }
+
+      .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+      }
+
+      .device-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .device-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .device-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(140px, 0.8fr) auto;
+        align-items: center;
+        gap: 18px;
+        min-height: 62px;
+        padding: 12px 14px;
+        border: 1px solid rgba(255, 255, 255, 0.74);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.62);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
+      }
+
+      .device-row-name {
+        display: grid;
+        gap: 3px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 900;
+      }
+
+      .device-id {
+        color: var(--muted);
+        font-family: Consolas, "Courier New", monospace;
+        font-weight: 600;
+      }
+
+      .device-role {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .mini-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 74px;
+        min-height: 34px;
+        padding: 0 14px;
+        border-radius: 999px;
+        background: #e9f8ef;
+        color: #257a4c;
+        font-weight: 900;
+      }
+
+      .mini-pill.offline {
+        background: #fff1ef;
+        color: #b42318;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .modal {
+        position: fixed;
+        inset: 0;
+        z-index: 20;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      .modal[hidden] {
+        display: none;
+      }
+
+      .modal-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(23, 32, 51, 0.34);
+        backdrop-filter: blur(7px);
+        -webkit-backdrop-filter: blur(7px);
+      }
+
+      .detail-shell {
+        position: relative;
+        width: min(1060px, calc(100vw - 32px));
+        max-height: calc(100vh - 48px);
+        overflow: auto;
+        padding: 28px;
+        border-radius: 26px;
+        border: 1px solid rgba(255, 255, 255, 0.76);
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.75),
+          0 24px 60px rgba(24, 32, 46, 0.2);
+        backdrop-filter: blur(24px) saturate(1.22);
+        -webkit-backdrop-filter: blur(24px) saturate(1.22);
+      }
+
+      .detail-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 18px;
+      }
+
+      .detail-head h2 {
+        font-size: 26px;
+      }
+
+      .detail-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 20px;
+      }
+
+      .detail-close {
+        min-height: 40px;
+        padding: 0 18px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--surface);
+        color: var(--text);
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .detail-section {
+        margin-top: 20px;
+      }
+
+      .detail-section h3 {
+        margin: 0 0 10px;
+        font-size: 18px;
+      }
+
+      .preview-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        border: 1px solid rgba(217, 225, 242, 0.86);
+        border-radius: 18px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      .preview-table th,
+      .preview-table td {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+      }
+
+      .preview-table th {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+
+      .preview-table tr:last-child td {
+        border-bottom: 0;
+      }
+
+      @media (max-width: 920px) {
+        .hero,
+        .grid {
+          grid-template-columns: 1fr;
+        }
+
+        .device-row {
+          grid-template-columns: 1fr auto;
+        }
+
+        .device-role {
+          grid-column: 1 / -1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="topbar">
+        <div class="brand">
+          <div class="logo">A</div>
+          <span>ASDUN Smart Care</span>
+        </div>
+        <div class="live"><span class="dot"></span><span>Live · Updated 14:30</span></div>
+      </header>
+
+      <section class="hero">
+        <div>
+          <h1>智能看护中心</h1>
+          <p>集中查看情绪助手、视觉摔倒、WiFi 摔倒、温湿度和设备在线状态。首页优先呈现看护状态，详细记录保留在下方列表中。</p>
+          <div class="hero-actions">
+            <span class="pill primary">全部设备在线</span>
+            <span class="pill">今日识别 24 条</span>
+            <span class="pill">情绪助手已启用</span>
+          </div>
+        </div>
+        <div class="scene-card clickable-card" data-detail="telemetry" role="button" tabindex="0">
+          <div class="scene-top"><span>Living Room</span><span>Comfort</span></div>
+          <div>
+            <div class="scene-temp">23.1 C</div>
+            <p>Humidity 78.0% · RSSI -40</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="card clickable-card" data-detail="emotion" role="button" tabindex="0">
+          <div class="card-head">
+            <div class="icon">☻</div>
+            <span class="status">已记录</span>
+          </div>
+          <h2>情绪助手</h2>
+          <p>yuqin · Happy 54.2% · Calm 45.8%</p>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <div class="icon">▣</div>
+            <span class="status">待接入</span>
+          </div>
+          <h2>对话日志</h2>
+          <p>预留对话记录入口，暂不接入新功能</p>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <div class="icon">◎</div>
+            <span class="status">正常</span>
+          </div>
+          <h2>摔倒检测</h2>
+          <p>视觉与 WiFi 双通道看护</p>
+          <div class="sub-statuses">
+            <div class="sub-status"><span>视觉摔倒检测</span><span>正常</span></div>
+            <div class="sub-status"><span>WiFi 摔倒检测</span><span>正常</span></div>
+          </div>
+        </article>
+
+        <article class="card clickable-card" data-detail="commands" role="button" tabindex="0">
+          <div class="card-head">
+            <div class="icon">●</div>
+            <span class="status">可用</span>
+          </div>
+          <h2>控制台</h2>
+          <p>设备命令下发与执行结果查看</p>
+          <div class="console-actions">
+            <span class="console-chip">Ping</span>
+            <span class="console-chip">Status</span>
+            <span class="console-chip">Reload gallery</span>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Devices</h2>
+          <span class="muted">5</span>
+        </div>
+        <div class="device-list">
+          <div class="device-row">
+            <strong class="device-row-name">esp32-01<span class="device-id">esp32-01</span></strong>
+            <span class="device-role">esp32</span>
+            <span class="mini-pill offline">Offline</span>
+          </div>
+          <div class="device-row">
+            <strong class="device-row-name">asdun-cloud<span class="device-id">asdun-cloud</span></strong>
+            <span class="device-role">inference_server</span>
+            <span class="mini-pill offline">Offline</span>
+          </div>
+          <div class="device-row">
+            <strong class="device-row-name">asdun@asdun<span class="device-id">pi-01</span></strong>
+            <span class="device-role">raspberry_pi</span>
+            <span class="mini-pill offline">Offline</span>
+          </div>
+          <div class="device-row">
+            <strong class="device-row-name">Visual Fall Detector<span class="device-id">visual-fall-detector</span></strong>
+            <span class="device-role">visual_fall_detector</span>
+            <span class="mini-pill offline">Offline</span>
+          </div>
+          <div class="device-row">
+            <strong class="device-row-name">WiFi Fall RX<span class="device-id">wifi-fall-rx</span></strong>
+            <span class="device-role">wifi_fall_rx</span>
+            <span class="mini-pill offline">Offline</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="detail-modal" class="modal" hidden>
+      <div class="modal-backdrop" data-close-detail></div>
+      <div class="detail-shell" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+        <div class="detail-head">
+          <div>
+            <h2 id="detail-title">详情</h2>
+            <p id="detail-subtitle" class="muted"></p>
+          </div>
+          <button class="detail-close" type="button" data-close-detail>关闭</button>
+        </div>
+        <div id="detail-content"></div>
+        <div class="detail-actions">
+          <button class="detail-close" type="button" data-close-detail>关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const details = {
+        telemetry: {
+          title: "Telemetry",
+          subtitle: "ESP32 温湿度、光照和 RSSI 实时上传记录",
+          content: `
+            <table class="preview-table">
+              <thead>
+                <tr><th>Time</th><th>Device</th><th>Temperature</th><th>Humidity</th><th>Light</th><th>RSSI</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>2026/5/6 19:03:26</td><td>esp32-01</td><td>23.1 C</td><td>78.0%</td><td>-</td><td>-40.0</td></tr>
+                <tr><td>2026/5/6 19:03:20</td><td>esp32-01</td><td>23.1 C</td><td>78.0%</td><td>-</td><td>-38.0</td></tr>
+                <tr><td>2026/5/6 19:03:14</td><td>esp32-01</td><td>23.1 C</td><td>78.0%</td><td>-</td><td>-38.0</td></tr>
+                <tr><td>2026/5/6 19:03:07</td><td>esp32-01</td><td>23.1 C</td><td>78.0%</td><td>-</td><td>-39.0</td></tr>
+                <tr><td>2026/5/6 19:03:01</td><td>esp32-01</td><td>23.1 C</td><td>78.0%</td><td>-</td><td>-31.0</td></tr>
+              </tbody>
+            </table>
+          `,
+        },
+        commands: {
+          title: "控制台",
+          subtitle: "设备命令下发与执行结果查看",
+          content: `
+            <div class="console-actions" style="margin-bottom:14px">
+              <span class="console-chip">Ping</span>
+              <span class="console-chip">Status</span>
+              <span class="console-chip">Reload gallery</span>
+            </div>
+            <table class="preview-table">
+              <thead>
+                <tr><th>Time</th><th>Device</th><th>Command</th><th>Status</th><th>Payload / Result</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>2026/5/4 21:23:24</td><td>pi-01</td><td>reload_gallery</td><td><span class="mini-pill">completed</span></td><td>{"command":"reload_gallery","command_id":"cmd-177..."}</td></tr>
+                <tr><td>2026/5/4 21:22:38</td><td>pi-01</td><td>ping</td><td><span class="mini-pill">completed</span></td><td>{"command":"ping","command_id":"cmd-177..."}</td></tr>
+                <tr><td>2026/4/29 21:17:10</td><td>esp32-01</td><td>set_mode</td><td><span class="mini-pill">completed</span></td><td>{"handled_by":"test_platform_command_flow.ps1"}</td></tr>
+              </tbody>
+            </table>
+          `,
+        },
+        emotion: {
+          title: "情绪助手",
+          subtitle: "People 情绪统计与 Recognition 识别记录",
+          content: `
+            <div class="detail-section">
+              <h3>People</h3>
+              <table class="preview-table">
+                <thead>
+                  <tr><th>Person</th><th>Records</th><th>Identity Avg</th><th>Dominant Emotion</th><th>Emotion Share</th><th>Last Seen</th><th>Report</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>yuqin<br><span class="muted">pi-01</span></td><td>24</td><td>72.2%</td><td>Happy 54.2%</td><td>Happy 54.2%<br>Calm 45.8%</td><td>2026/5/4 20:03:30</td><td><span class="console-chip">心情日报</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="detail-section">
+              <h3>Recognition</h3>
+              <table class="preview-table">
+                <thead>
+                  <tr><th>Time</th><th>Source</th><th>Identity</th><th>Emotion</th><th>Track</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>2026/5/4 20:03:30</td><td>pi-01</td><td>yuqin 83.5%</td><td>Calm 95.7%</td><td>track=2 frame=785</td></tr>
+                  <tr><td>2026/5/4 20:03:29</td><td>pi-01</td><td>yuqin 77.9%</td><td>Calm 93.5%</td><td>track=2 frame=760</td></tr>
+                  <tr><td>2026/5/4 20:03:28</td><td>pi-01</td><td>yuqin 72.0%</td><td>Happy 94.4%</td><td>track=2 frame=746</td></tr>
+                  <tr><td>2026/5/4 20:03:27</td><td>pi-01</td><td>yuqin 70.7%</td><td>Happy 92.5%</td><td>track=2 frame=734</td></tr>
+                  <tr><td>2026/5/4 20:03:27</td><td>pi-01</td><td>yuqin 66.3%</td><td>Happy 81.5%</td><td>track=2 frame=722</td></tr>
+                </tbody>
+              </table>
+            </div>
+          `,
+        },
+      };
+
+      const modal = document.getElementById("detail-modal");
+      const title = document.getElementById("detail-title");
+      const subtitle = document.getElementById("detail-subtitle");
+      const content = document.getElementById("detail-content");
+
+      function openDetail(kind) {
+        const detail = details[kind];
+        if (!detail) return;
+        title.textContent = detail.title;
+        subtitle.textContent = detail.subtitle;
+        content.innerHTML = detail.content;
+        modal.hidden = false;
+      }
+
+      function closeDetail() {
+        modal.hidden = true;
+      }
+
+      document.querySelectorAll("[data-detail]").forEach((card) => {
+        card.addEventListener("click", () => openDetail(card.dataset.detail));
+        card.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openDetail(card.dataset.detail);
+          }
+        });
+      });
+
+      document.querySelectorAll("[data-close-detail]").forEach((button) => {
+        button.addEventListener("click", closeDetail);
+      });
+    </script>
+  </body>
+</html>

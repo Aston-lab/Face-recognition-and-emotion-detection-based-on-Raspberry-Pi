@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import sqlite3
@@ -11,6 +11,17 @@ from typing import Any
 
 def now_ms() -> int:
     return int(time.time() * 1000)
+
+
+MIN_VALID_TS_MS = 1_704_067_200_000
+
+
+def payload_ts_ms(payload: dict[str, Any], received_ms: int) -> int:
+    try:
+        ts_ms = int(payload.get("ts_ms") or 0)
+    except (TypeError, ValueError):
+        ts_ms = 0
+    return ts_ms if ts_ms >= MIN_VALID_TS_MS else received_ms
 
 
 class SQLiteStore:
@@ -93,6 +104,37 @@ class SQLiteStore:
                 CREATE INDEX IF NOT EXISTS idx_telemetry_device_ts
                   ON telemetry(device_id, ts_ms DESC);
 
+                CREATE TABLE IF NOT EXISTS conversation_events (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  device_id TEXT NOT NULL,
+                  speaker TEXT NOT NULL,
+                  text TEXT NOT NULL,
+                  source TEXT NOT NULL DEFAULT '',
+                  raw_json TEXT NOT NULL,
+                  ts_ms INTEGER NOT NULL,
+                  received_ms INTEGER NOT NULL
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_conversation_events_ts
+                  ON conversation_events(ts_ms DESC, id DESC);
+
+                CREATE TABLE IF NOT EXISTS fall_events (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  source_device TEXT NOT NULL,
+                  frame_id INTEGER,
+                  mode TEXT,
+                  fall_state TEXT,
+                  message TEXT,
+                  fps REAL,
+                  image_url TEXT,
+                  raw_json TEXT NOT NULL,
+                  ts_ms INTEGER NOT NULL,
+                  received_ms INTEGER NOT NULL
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_fall_events_ts
+                  ON fall_events(ts_ms DESC, id DESC);
+
                 CREATE TABLE IF NOT EXISTS command_logs (
                   id INTEGER PRIMARY KEY AUTOINCREMENT,
                   command_id TEXT NOT NULL UNIQUE,
@@ -122,7 +164,7 @@ class SQLiteStore:
             raise ValueError("device_id is required")
 
         received_ms = now_ms()
-        ts_ms = int(payload.get("ts_ms") or received_ms)
+        ts_ms = payload_ts_ms(payload, received_ms)
         role = str(payload.get("role") or payload.get("device_role") or "unknown").strip() or "unknown"
         display_name = str(payload.get("display_name") or device_id).strip()
         online = bool(payload.get("online", True))
@@ -224,7 +266,7 @@ class SQLiteStore:
     def insert_recognition_event(self, payload: dict[str, Any]) -> dict[str, Any]:
         source_device = str(payload.get("source_device") or payload.get("device_id") or "unknown").strip()
         received_ms = now_ms()
-        ts_ms = int(payload.get("ts_ms") or received_ms)
+        ts_ms = payload_ts_ms(payload, received_ms)
         identity = payload.get("identity") if isinstance(payload.get("identity"), dict) else {}
         emotion = payload.get("emotion") if isinstance(payload.get("emotion"), dict) else {}
 
@@ -386,7 +428,7 @@ class SQLiteStore:
             raise ValueError("device_id is required")
 
         received_ms = now_ms()
-        ts_ms = int(payload.get("ts_ms") or received_ms)
+        ts_ms = payload_ts_ms(payload, received_ms)
         telemetry = payload.get("telemetry") if isinstance(payload.get("telemetry"), dict) else None
         if telemetry is None and isinstance(payload.get("status"), dict):
             telemetry = payload.get("status")
@@ -474,6 +516,131 @@ class SQLiteStore:
                     (safe_limit,),
                 ).fetchall()
         return [self._telemetry_row_to_dict(row) for row in rows]
+
+    def delete_telemetry_event(self, event_id: int) -> bool:
+        with self._lock:
+            cur = self._conn.execute("DELETE FROM telemetry WHERE id = ?", (int(event_id),))
+            self._conn.commit()
+        return cur.rowcount > 0
+
+    def clear_telemetry(self, device_id: str | None = None) -> int:
+        clean_device_id = str(device_id or "").strip()
+        with self._lock:
+            if clean_device_id:
+                cur = self._conn.execute("DELETE FROM telemetry WHERE device_id = ?", (clean_device_id,))
+            else:
+                cur = self._conn.execute("DELETE FROM telemetry")
+            self._conn.commit()
+        return int(cur.rowcount)
+
+    def insert_conversation_event(self, payload: dict[str, Any]) -> dict[str, Any]:
+        device_id = str(payload.get("device_id") or payload.get("source_device") or "xiaozhi-mcp").strip()
+        speaker = str(payload.get("speaker") or "").strip().lower()
+        text = str(payload.get("text") or payload.get("message") or "").strip()
+        source = str(payload.get("source") or "").strip()
+        if not device_id:
+            raise ValueError("device_id is required")
+        if speaker not in {"user", "assistant", "system"}:
+            raise ValueError("speaker must be user, assistant, or system")
+        if not text:
+            raise ValueError("text is required")
+
+        received_ms = now_ms()
+        ts_ms = payload_ts_ms(payload, received_ms)
+        raw_json = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+        with self._lock:
+            cur = self._conn.execute(
+                """
+                INSERT INTO conversation_events(device_id, speaker, text, source, raw_json, ts_ms, received_ms)
+                VALUES(?, ?, ?, ?, ?, ?, ?)
+                """,
+                (device_id, speaker, text, source, raw_json, ts_ms, received_ms),
+            )
+            self._conn.commit()
+            event_id = int(cur.lastrowid)
+        return self.get_conversation_event(event_id)
+
+    def get_conversation_event(self, event_id: int) -> dict[str, Any]:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT * FROM conversation_events WHERE id = ?",
+                (event_id,),
+            ).fetchone()
+        if row is None:
+            raise KeyError(event_id)
+        return self._conversation_row_to_dict(row)
+
+    def list_conversation_events(self, device_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
+        safe_limit = max(1, min(500, int(limit)))
+        clean_device_id = str(device_id or "").strip()
+        with self._lock:
+            if clean_device_id:
+                rows = self._conn.execute(
+                    """
+                    SELECT * FROM conversation_events
+                    WHERE device_id = ?
+                    ORDER BY ts_ms DESC, id DESC
+                    LIMIT ?
+                    """,
+                    (clean_device_id, safe_limit),
+                ).fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM conversation_events ORDER BY ts_ms DESC, id DESC LIMIT ?",
+                    (safe_limit,),
+                ).fetchall()
+        return [self._conversation_row_to_dict(row) for row in rows]
+
+    def insert_fall_event(self, payload: dict[str, Any]) -> dict[str, Any]:
+        source_device = str(payload.get("source_device") or payload.get("device_id") or "unknown").strip()
+        received_ms = now_ms()
+        ts_ms = payload_ts_ms(payload, received_ms)
+        raw_json = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+
+        with self._lock:
+            cur = self._conn.execute(
+                """
+                INSERT INTO fall_events(
+                  source_device, frame_id, mode, fall_state, message, fps,
+                  image_url, raw_json, ts_ms, received_ms
+                )
+                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    source_device,
+                    payload.get("frame_id"),
+                    payload.get("mode"),
+                    payload.get("fall_state"),
+                    payload.get("message"),
+                    _float_or_none(payload.get("fps")),
+                    payload.get("image_url"),
+                    raw_json,
+                    ts_ms,
+                    received_ms,
+                ),
+            )
+            self._conn.commit()
+            event_id = int(cur.lastrowid)
+        return self.get_fall_event(event_id)
+
+    def get_fall_event(self, event_id: int) -> dict[str, Any]:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT * FROM fall_events WHERE id = ?",
+                (event_id,),
+            ).fetchone()
+        if row is None:
+            raise KeyError(event_id)
+        return self._fall_row_to_dict(row)
+
+    def list_fall_events(self, limit: int = 100) -> list[dict[str, Any]]:
+        safe_limit = max(1, min(500, int(limit)))
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT * FROM fall_events ORDER BY ts_ms DESC, id DESC LIMIT ?",
+                (safe_limit,),
+            ).fetchall()
+        return [self._fall_row_to_dict(row) for row in rows]
 
     def create_command(self, payload: dict[str, Any]) -> dict[str, Any]:
         device_id = str(payload.get("device_id", "")).strip()
@@ -589,6 +756,8 @@ class SQLiteStore:
             "people": self.list_people_profiles(),
             "recognition_events": self.list_recognition_events(limit=50),
             "telemetry": self.list_telemetry(limit=50),
+            "conversation_events": self.list_conversation_events(limit=50),
+            "fall_events": self.list_fall_events(limit=50),
             "commands": self.list_commands(limit=50),
             "server_time_ms": now_ms(),
         }
@@ -654,6 +823,35 @@ class SQLiteStore:
             "humidity": row["humidity"],
             "light": row["light"],
             "rssi": row["rssi"],
+            "ts_ms": row["ts_ms"],
+            "received_ms": row["received_ms"],
+        }
+
+    @staticmethod
+    def _conversation_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+        return {
+            "id": row["id"],
+            "device_id": row["device_id"],
+            "speaker": row["speaker"],
+            "text": row["text"],
+            "source": row["source"],
+            "raw": _loads_json(row["raw_json"] or "{}"),
+            "ts_ms": row["ts_ms"],
+            "received_ms": row["received_ms"],
+        }
+
+    @staticmethod
+    def _fall_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+        return {
+            "id": row["id"],
+            "source_device": row["source_device"],
+            "frame_id": row["frame_id"],
+            "mode": row["mode"],
+            "fall_state": row["fall_state"],
+            "message": row["message"],
+            "fps": row["fps"],
+            "image_url": row["image_url"],
+            "raw": _loads_json(row["raw_json"] or "{}"),
             "ts_ms": row["ts_ms"],
             "received_ms": row["received_ms"],
         }
@@ -767,3 +965,4 @@ def _derive_signals(role: str, online: bool, status: dict[str, Any], now: int, t
         "cloud_link": cloud,
         "inference": inference,
     }
+
