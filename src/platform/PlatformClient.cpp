@@ -477,6 +477,10 @@ std::string PlatformClient::statusUrl() const {
   return trimTrailingSlash(config_.base_url) + "/api/status";
 }
 
+std::string PlatformClient::enrollmentImagesUrl() const {
+  return trimTrailingSlash(config_.base_url) + "/api/enrollment/images";
+}
+
 std::string PlatformClient::pendingCommandsUrl() const {
   return trimTrailingSlash(config_.base_url) + "/api/commands/pending";
 }
@@ -749,6 +753,89 @@ bool PlatformClient::postStatus(bool online, const PlatformStatus& status) const
     std::cerr << "[PlatformClient] status post failed url=" << url
               << " curl=" << curl_easy_strerror(code)
               << " http=" << http_code << std::endl;
+  }
+  return ok;
+#endif
+}
+
+bool PlatformClient::uploadEnrollmentImages(const std::string& name,
+                                            const std::vector<std::string>& image_paths,
+                                            bool replace) const {
+  if (!enabled() || name.empty() || image_paths.empty()) {
+    return false;
+  }
+
+#ifndef USE_CLOUD_CLIENT
+  (void)name;
+  (void)image_paths;
+  (void)replace;
+  return false;
+#else
+  CURL* curl = curl_easy_init();
+  if (curl == nullptr) {
+    return false;
+  }
+
+  std::string response;
+  curl_mime* mime = curl_mime_init(curl);
+  auto addTextPart = [mime](const char* field_name, const std::string& value) {
+    curl_mimepart* part = curl_mime_addpart(mime);
+    curl_mime_name(part, field_name);
+    curl_mime_data(part, value.c_str(), CURL_ZERO_TERMINATED);
+  };
+
+  addTextPart("source_device", config_.device_id);
+  addTextPart("name", name);
+  addTextPart("replace", replace ? "true" : "false");
+
+  int attached = 0;
+  for (const auto& path : image_paths) {
+    curl_mimepart* part = curl_mime_addpart(mime);
+    curl_mime_name(part, "images");
+    curl_mime_type(part, "image/jpeg");
+    if (curl_mime_filedata(part, path.c_str()) == CURLE_OK) {
+      ++attached;
+    }
+  }
+
+  if (attached == 0) {
+    curl_mime_free(mime);
+    curl_easy_cleanup(curl);
+    return false;
+  }
+
+  const std::string url = enrollmentImagesUrl();
+  curl_slist* headers = nullptr;
+  headers = appendAuthHeaders(headers, config_);
+
+  curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+  curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
+  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, static_cast<long>(std::max(1, config_.connect_timeout_ms)));
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, static_cast<long>(std::max(5000, config_.timeout_ms * std::max(1, attached))));
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeResponseCallback);
+  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+  const CURLcode code = curl_easy_perform(curl);
+  long http_code = 0;
+  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+
+  curl_slist_free_all(headers);
+  curl_mime_free(mime);
+  curl_easy_cleanup(curl);
+
+  const bool ok = code == CURLE_OK && http_code >= 200 && http_code < 300;
+  if (config_.debug) {
+    if (ok) {
+      std::cout << "[PlatformClient] enrollment images uploaded name=" << name
+                << " images=" << attached << std::endl;
+    } else {
+      std::cerr << "[PlatformClient] enrollment image upload failed name=" << name
+                << " images=" << attached
+                << " curl=" << curl_easy_strerror(code)
+                << " http=" << http_code
+                << " response=" << response << std::endl;
+    }
   }
   return ok;
 #endif

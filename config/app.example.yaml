@@ -74,8 +74,8 @@ platform_status_interval_ms: 5000
 platform_command_poll_enabled: true
 platform_command_poll_interval_ms: 5000
 platform_command_poll_limit: 5
-platform_connect_timeout_ms: 1000
-platform_timeout_ms: 2000
+platform_connect_timeout_ms: 3000
+platform_timeout_ms: 5000
 platform_debug: false
 
 # Enrollment quality gate

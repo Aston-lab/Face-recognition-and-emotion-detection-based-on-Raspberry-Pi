@@ -445,6 +445,29 @@
         text-align: center;
       }
 
+      .person-photo-cell {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        min-width: 0;
+      }
+
+      .person-photo {
+        display: block;
+        width: 48px;
+        height: 48px;
+        border: 1px solid #d9e1f2;
+        border-radius: 6px;
+        object-fit: cover;
+        background: #eef1f5;
+      }
+
+      .person-photo-meta {
+        min-width: 0;
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
       .emotion-stack {
         display: grid;
         gap: 7px;
@@ -1387,17 +1410,18 @@
         <table>
           <thead>
             <tr>
-              <th style="width: 15%">Person</th>
+              <th style="width: 12%">Photo</th>
+              <th style="width: 14%">Person</th>
               <th style="width: 9%">Records</th>
               <th style="width: 12%">Identity Avg</th>
               <th style="width: 15%">Dominant Emotion</th>
-              <th style="width: 28%">Emotion Share</th>
-              <th style="width: 14%">Last Seen</th>
+              <th style="width: 25%">Emotion Share</th>
+              <th style="width: 10%">Last Seen</th>
               <th style="width: 7%">Report</th>
             </tr>
           </thead>
           <tbody id="people">
-            <tr><td class="empty" colspan="7">No people</td></tr>
+            <tr><td class="empty" colspan="8">No people</td></tr>
           </tbody>
         </table>
       </section>
@@ -1885,12 +1909,31 @@
         `;
       }
 
+      function personPhotoHtml(person) {
+        const imageUrl = String(person.latest_image_url || "").trim();
+        const count = Number(person.enrollment_image_count || 0);
+        if (!imageUrl) return '<span class="muted">-</span>';
+        const safeUrl = escapeHtml(imageUrl);
+        const label = count > 0 ? `${count} sample${count === 1 ? "" : "s"}` : "sample";
+        return `
+          <div class="person-photo-cell">
+            <a href="${safeUrl}" target="_blank" rel="noreferrer" title="Open enrollment image">
+              <img class="person-photo" src="${safeUrl}" alt="${escapeHtml(person.name || "enrollment")}" loading="lazy" />
+            </a>
+            <div class="person-photo-meta muted">
+              <div>${escapeHtml(label)}</div>
+              <div>${timeText(person.last_enrollment_ms)}</div>
+            </div>
+          </div>
+        `;
+      }
+
       function renderPeople() {
         const people = state.people || [];
         $("people-count").textContent = `${people.length}`;
         const body = $("people");
         if (!people.length) {
-          body.innerHTML = '<tr><td class="empty" colspan="7">No people</td></tr>';
+          body.innerHTML = '<tr><td class="empty" colspan="8">No people</td></tr>';
           return;
         }
         body.innerHTML = people.map((person) => {
@@ -1901,6 +1944,7 @@
           const dominantText = dominant ? `${escapeHtml(dominant.label)} ${Number(dominant.weighted_pct || 0).toFixed(1)}%` : "-";
           return `
             <tr class="selectable ${selected ? "selected" : ""}" data-person="${name}">
+              <td>${personPhotoHtml(person)}</td>
               <td class="truncate" title="${name}">
                 <strong>${name}</strong>
                 <div class="muted mono">${escapeHtml(sources || "-")}</div>
@@ -2549,6 +2593,7 @@
         const visiblePeople = visibleHistory(people, state.smartPeopleExpanded);
         const peopleRows = people.length ? visiblePeople.map((person) => `
           <tr>
+            <td>${personPhotoHtml(person)}</td>
             <td><strong>${escapeHtml(person.name || "-")}</strong><br><span class="mono muted">${escapeHtml((person.sources || []).join(", ") || "-")}</span></td>
             <td>${Number(person.event_count || 0)}</td>
             <td>${Number(person.avg_identity_confidence || 0).toFixed(1)}%</td>
@@ -2557,7 +2602,7 @@
             <td>${timeText(person.last_seen_ms)}</td>
             <td><button type="button" data-report-person="${escapeHtml(person.name || "")}">心情日报</button></td>
           </tr>
-        `).join("") : '<tr><td class="empty" colspan="7">No people</td></tr>';
+        `).join("") : '<tr><td class="empty" colspan="8">No people</td></tr>';
         const events = (state.recognition_events || []).filter(isKnownRecognitionEvent).filter(matchesSelectedPerson);
         const visibleEvents = visibleHistory(events, state.smartRecognitionExpanded);
         const eventRows = events.length ? visibleEvents.map((event) => {
@@ -2580,7 +2625,7 @@
               <button class="text-button history-toggle" type="button" data-smart-toggle="smartPeopleExpanded" ${people.length <= 5 ? "hidden" : ""}>${state.smartPeopleExpanded ? "Collapse" : `Show all ${people.length}`}</button>
               <span class="muted">${state.smartPeopleExpanded ? people.length : Math.min(people.length, 5)} / ${people.length}</span>
             </div>
-            <div class="detail-table-wrap"><table><thead><tr><th>Person</th><th>Records</th><th>Identity Avg</th><th>Dominant Emotion</th><th>Emotion Share</th><th>Last Seen</th><th>Report</th></tr></thead><tbody>${peopleRows}</tbody></table></div>
+            <div class="detail-table-wrap"><table><thead><tr><th>Photo</th><th>Person</th><th>Records</th><th>Identity Avg</th><th>Dominant Emotion</th><th>Emotion Share</th><th>Last Seen</th><th>Report</th></tr></thead><tbody>${peopleRows}</tbody></table></div>
           </div>
           <div class="detail-section">
             <h3>Recognition</h3>

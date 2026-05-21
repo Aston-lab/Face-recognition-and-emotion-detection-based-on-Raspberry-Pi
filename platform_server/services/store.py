@@ -89,6 +89,26 @@ class SQLiteStore:
                 CREATE INDEX IF NOT EXISTS idx_recognition_events_ts
                   ON recognition_events(ts_ms DESC);
 
+                CREATE TABLE IF NOT EXISTS enrollment_images (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  source_device TEXT NOT NULL,
+                  person_name TEXT NOT NULL,
+                  image_url TEXT NOT NULL,
+                  filename TEXT NOT NULL DEFAULT '',
+                  original_filename TEXT NOT NULL DEFAULT '',
+                  content_type TEXT NOT NULL DEFAULT '',
+                  file_size INTEGER NOT NULL DEFAULT 0,
+                  raw_json TEXT NOT NULL DEFAULT '{}',
+                  ts_ms INTEGER NOT NULL,
+                  received_ms INTEGER NOT NULL
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_enrollment_images_person_ts
+                  ON enrollment_images(person_name, ts_ms DESC, id DESC);
+
+                CREATE INDEX IF NOT EXISTS idx_enrollment_images_source_person
+                  ON enrollment_images(source_device, person_name);
+
                 CREATE TABLE IF NOT EXISTS telemetry (
                   id INTEGER PRIMARY KEY AUTOINCREMENT,
                   device_id TEXT NOT NULL,
@@ -391,9 +411,45 @@ class SQLiteStore:
                 bucket["count"] += 1
                 bucket["confidence_sum"] += _clamp_pct(event.get("emotion_confidence"))
 
+        enrollment_summaries = self._enrollment_summary_by_person()
+        for key, summary in enrollment_summaries.items():
+            name = str(summary.get("person_name") or "").strip()
+            if not name:
+                continue
+            profile = profiles.setdefault(
+                name,
+                {
+                    "name": name,
+                    "event_count": 0,
+                    "identity_confidence_sum": 0.0,
+                    "first_seen_ms": None,
+                    "last_seen_ms": None,
+                    "sources": set(),
+                    "emotions": {},
+                },
+            )
+            if summary.get("source_device"):
+                profile["sources"].add(str(summary["source_device"]))
+            last_uploaded_ms = int(summary.get("last_uploaded_ms") or 0)
+            if last_uploaded_ms:
+                profile["first_seen_ms"] = (
+                    last_uploaded_ms
+                    if profile["first_seen_ms"] is None
+                    else min(profile["first_seen_ms"], last_uploaded_ms)
+                )
+                profile["last_seen_ms"] = (
+                    last_uploaded_ms
+                    if profile["last_seen_ms"] is None
+                    else max(profile["last_seen_ms"], last_uploaded_ms)
+                )
+            profile["enrollment_image_count"] = int(summary.get("image_count") or 0)
+            profile["latest_image_url"] = summary.get("latest_image_url") or ""
+            profile["last_enrollment_ms"] = last_uploaded_ms
+
         people: list[dict[str, Any]] = []
         for profile in profiles.values():
-            total = max(1, int(profile["event_count"]))
+            event_count = int(profile["event_count"])
+            total = max(1, event_count)
             emotions = []
             for label, values in profile["emotions"].items():
                 count = int(values["count"])
@@ -410,17 +466,174 @@ class SQLiteStore:
             people.append(
                 {
                     "name": profile["name"],
-                    "event_count": total,
+                    "event_count": event_count,
                     "avg_identity_confidence": profile["identity_confidence_sum"] / total,
                     "first_seen_ms": profile["first_seen_ms"],
                     "last_seen_ms": profile["last_seen_ms"],
                     "sources": sorted(profile["sources"]),
                     "dominant_emotion": emotions[0] if emotions else None,
                     "emotions": emotions,
+                    "enrollment_image_count": int(profile.get("enrollment_image_count") or 0),
+                    "latest_image_url": profile.get("latest_image_url") or "",
+                    "last_enrollment_ms": profile.get("last_enrollment_ms"),
                 }
             )
         people.sort(key=lambda item: (-(item["last_seen_ms"] or 0), item["name"]))
         return people
+
+    def _enrollment_summary_by_person(self) -> dict[str, dict[str, Any]]:
+        with self._lock:
+            rows = self._conn.execute(
+                """
+                SELECT person_name, source_device, COUNT(*) AS image_count, MAX(ts_ms) AS last_uploaded_ms
+                FROM enrollment_images
+                WHERE TRIM(person_name) != ''
+                GROUP BY LOWER(TRIM(person_name))
+                """
+            ).fetchall()
+            latest_rows = self._conn.execute(
+                """
+                SELECT person_name, image_url
+                FROM enrollment_images
+                WHERE id IN (
+                  SELECT id FROM enrollment_images AS latest
+                  WHERE LOWER(TRIM(latest.person_name)) = LOWER(TRIM(enrollment_images.person_name))
+                  ORDER BY ts_ms DESC, id DESC
+                  LIMIT 1
+                )
+                """
+            ).fetchall()
+
+        latest_by_person = {
+            str(row["person_name"] or "").strip().lower(): row["image_url"]
+            for row in latest_rows
+            if str(row["person_name"] or "").strip()
+        }
+        summaries: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            person_name = str(row["person_name"] or "").strip()
+            if not person_name:
+                continue
+            key = person_name.lower()
+            summaries[key] = {
+                "person_name": person_name,
+                "source_device": row["source_device"],
+                "image_count": row["image_count"],
+                "last_uploaded_ms": row["last_uploaded_ms"],
+                "latest_image_url": latest_by_person.get(key, ""),
+            }
+        return summaries
+
+    def insert_enrollment_images(self, payload: dict[str, Any], images: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        source_device = str(payload.get("source_device") or payload.get("device_id") or "unknown").strip()
+        person_name = str(payload.get("name") or payload.get("person_name") or "").strip()
+        if not source_device:
+            raise ValueError("source_device is required")
+        if not person_name:
+            raise ValueError("name is required")
+
+        received_ms = now_ms()
+        ts_ms = payload_ts_ms(payload, received_ms)
+        row_ids: list[int] = []
+        with self._lock:
+            for image in images:
+                image_url = str(image.get("image_url") or "").strip()
+                if not image_url:
+                    continue
+                row_payload = {
+                    "source_device": source_device,
+                    "person_name": person_name,
+                    "image": image,
+                    "replace": bool(payload.get("replace", False)),
+                }
+                raw_json = json.dumps(row_payload, ensure_ascii=False, separators=(",", ":"))
+                cur = self._conn.execute(
+                    """
+                    INSERT INTO enrollment_images(
+                      source_device, person_name, image_url, filename, original_filename,
+                      content_type, file_size, raw_json, ts_ms, received_ms
+                    )
+                    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        source_device,
+                        person_name,
+                        image_url,
+                        str(image.get("filename") or ""),
+                        str(image.get("original_filename") or ""),
+                        str(image.get("content_type") or ""),
+                        int(image.get("file_size") or 0),
+                        raw_json,
+                        ts_ms,
+                        received_ms,
+                    ),
+                )
+                row_ids.append(int(cur.lastrowid))
+            self._conn.commit()
+
+        return [self.get_enrollment_image(row_id) for row_id in row_ids]
+
+    def get_enrollment_image(self, image_id: int) -> dict[str, Any]:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT * FROM enrollment_images WHERE id = ?",
+                (image_id,),
+            ).fetchone()
+        if row is None:
+            raise KeyError(image_id)
+        return self._enrollment_image_row_to_dict(row)
+
+    def list_enrollment_images(
+        self,
+        person: str | None = None,
+        source_device: str | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        safe_limit = max(1, min(500, int(limit)))
+        clean_person = str(person or "").strip()
+        clean_source = str(source_device or "").strip()
+        clauses: list[str] = []
+        params: list[Any] = []
+        if clean_person:
+            clauses.append("LOWER(TRIM(person_name)) = LOWER(?)")
+            params.append(clean_person)
+        if clean_source:
+            clauses.append("source_device = ?")
+            params.append(clean_source)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(safe_limit)
+        with self._lock:
+            rows = self._conn.execute(
+                f"SELECT * FROM enrollment_images {where} ORDER BY ts_ms DESC, id DESC LIMIT ?",
+                tuple(params),
+            ).fetchall()
+        return [self._enrollment_image_row_to_dict(row) for row in rows]
+
+    def clear_enrollment_images(self, source_device: str, person: str) -> list[str]:
+        clean_source = str(source_device or "").strip()
+        clean_person = str(person or "").strip()
+        if not clean_source or not clean_person:
+            return []
+        with self._lock:
+            rows = self._conn.execute(
+                """
+                SELECT image_url FROM enrollment_images
+                WHERE source_device = ?
+                  AND LOWER(TRIM(person_name)) = LOWER(?)
+                """,
+                (clean_source, clean_person),
+            ).fetchall()
+            urls = [str(row["image_url"] or "") for row in rows if str(row["image_url"] or "")]
+            self._conn.execute(
+                """
+                DELETE FROM enrollment_images
+                WHERE source_device = ?
+                  AND LOWER(TRIM(person_name)) = LOWER(?)
+                """,
+                (clean_source, clean_person),
+            )
+            self._conn.commit()
+        return urls
 
     def insert_telemetry(self, payload: dict[str, Any]) -> dict[str, Any]:
         device_id = str(payload.get("device_id", "")).strip()
@@ -755,6 +968,7 @@ class SQLiteStore:
             "devices": self.list_devices(),
             "people": self.list_people_profiles(),
             "recognition_events": self.list_recognition_events(limit=50),
+            "enrollment_images": self.list_enrollment_images(limit=50),
             "telemetry": self.list_telemetry(limit=50),
             "conversation_events": self.list_conversation_events(limit=50),
             "fall_events": self.list_fall_events(limit=50),
@@ -808,6 +1022,22 @@ class SQLiteStore:
             "emotion": row["emotion"],
             "emotion_confidence": row["emotion_confidence"],
             "latency_ms": row["latency_ms"],
+            "raw": _loads_json(row["raw_json"] or "{}"),
+            "ts_ms": row["ts_ms"],
+            "received_ms": row["received_ms"],
+        }
+
+    @staticmethod
+    def _enrollment_image_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+        return {
+            "id": row["id"],
+            "source_device": row["source_device"],
+            "person_name": row["person_name"],
+            "image_url": row["image_url"],
+            "filename": row["filename"],
+            "original_filename": row["original_filename"],
+            "content_type": row["content_type"],
+            "file_size": row["file_size"],
             "raw": _loads_json(row["raw_json"] or "{}"),
             "ts_ms": row["ts_ms"],
             "received_ms": row["received_ms"],

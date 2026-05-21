@@ -29,9 +29,12 @@ except ImportError:  # Allows `uvicorn app:app` from inside platform_server/.
 ROOT = Path(__file__).resolve().parent
 DB_PATH = Path(os.getenv("ASDUN_PLATFORM_DB", ROOT / "data" / "asdun_platform.sqlite"))
 ONLINE_TTL_MS = int(os.getenv("ASDUN_PLATFORM_ONLINE_TTL_MS", "30000"))
+WEBSOCKET_SEND_TIMEOUT_SECONDS = float(os.getenv("ASDUN_PLATFORM_WS_SEND_TIMEOUT_SECONDS", "1.0"))
 UPLOAD_ROOT = Path(os.getenv("ASDUN_PLATFORM_UPLOAD_DIR", ROOT / "data" / "uploads"))
 FALL_IMAGE_DIR = UPLOAD_ROOT / "fall"
+ENROLLMENT_IMAGE_DIR = UPLOAD_ROOT / "enrollment"
 FALL_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+ENROLLMENT_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(
     title="ASDUN Platform Server",
@@ -75,12 +78,14 @@ class WebSocketHub:
         if not connections:
             return
 
-        stale: list[WebSocket] = []
-        for websocket in connections:
+        async def send_one(websocket: WebSocket) -> WebSocket | None:
             try:
-                await websocket.send_json(message)
+                await asyncio.wait_for(websocket.send_json(message), timeout=WEBSOCKET_SEND_TIMEOUT_SECONDS)
+                return None
             except Exception:
-                stale.append(websocket)
+                return websocket
+
+        stale = [websocket for websocket in await asyncio.gather(*(send_one(ws) for ws in connections)) if websocket]
         if stale:
             async with self._lock:
                 for websocket in stale:
@@ -167,6 +172,19 @@ def locate_public_ip(ip: str) -> dict[str, Any]:
 
     ip_location_cache[ip] = (now, location)
     return location
+
+
+def safe_path_part(value: str, fallback: str) -> str:
+    cleaned = "".join(ch.lower() if ch.isascii() and ch.isalnum() else "_" for ch in value.strip())
+    cleaned = "_".join(part for part in cleaned.split("_") if part)
+    return cleaned[:80] or fallback
+
+
+def uploaded_file_suffix(filename: str | None) -> str:
+    suffix = Path(filename or "").suffix.lower()
+    return suffix if suffix in {".jpg", ".jpeg", ".png", ".webp"} else ".jpg"
+
+
 prober = PlatformProber(store, default_probes(), hub.broadcast)
 
 
@@ -229,6 +247,7 @@ def public_config() -> dict[str, Any]:
             "snapshot": "/api/snapshot",
             "status": "/api/status",
             "recognition_events": "/api/events/recognition",
+            "enrollment_images": "/api/enrollment/images",
             "conversation_events": "/api/events/conversation",
             "fall_events": "/api/events/fall",
             "telemetry": "/api/telemetry",
@@ -303,6 +322,90 @@ async def post_recognition_event(
     await hub.broadcast({"type": "recognition_event", "event": event})
     await hub.broadcast({"type": "people", "people": store.list_people_profiles()})
     return {"ok": True, "event": event}
+
+
+@app.get("/api/enrollment/images")
+def enrollment_images(
+    person: str | None = Query(None),
+    source_device: str | None = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+) -> dict[str, Any]:
+    return {
+        "ok": True,
+        "images": store.list_enrollment_images(person=person, source_device=source_device, limit=limit),
+    }
+
+
+@app.post("/api/enrollment/images")
+async def post_enrollment_images(
+    source_device: str = Form(...),
+    name: str = Form(...),
+    replace: bool = Form(default=True),
+    images: list[UploadFile] = File(...),
+    x_asdun_device_id: str | None = Header(default=None, alias="X-ASDUN-Device-Id"),
+    x_asdun_device_token: str | None = Header(default=None, alias="X-ASDUN-Device-Token"),
+) -> dict[str, Any]:
+    require_device_auth(device_auth, {"device_id": source_device}, x_asdun_device_id, x_asdun_device_token)
+
+    clean_source = source_device.strip()
+    clean_name = name.strip()
+    if not clean_source:
+        raise HTTPException(status_code=422, detail={"ok": False, "error": "source_device is required"})
+    if not clean_name:
+        raise HTTPException(status_code=422, detail={"ok": False, "error": "name is required"})
+
+    safe_source = safe_path_part(clean_source, "device")
+    safe_name = safe_path_part(clean_name, "person")
+    target_dir = ENROLLMENT_IMAGE_DIR / safe_source / safe_name
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    image_rows: list[dict[str, Any]] = []
+    for image in images:
+        content = await image.read()
+        if not content:
+            continue
+        suffix = uploaded_file_suffix(image.filename)
+        filename = f"enrollment-{uuid.uuid4().hex}{suffix}"
+        image_path = target_dir / filename
+        image_path.write_bytes(content)
+        image_rows.append(
+            {
+                "image_url": f"/uploads/enrollment/{safe_source}/{safe_name}/{filename}",
+                "filename": filename,
+                "original_filename": image.filename or "",
+                "content_type": image.content_type or "",
+                "file_size": len(content),
+            }
+        )
+
+    if not image_rows:
+        raise HTTPException(status_code=422, detail={"ok": False, "error": "no images uploaded"})
+
+    removed_urls: list[str] = []
+    if replace:
+        removed_urls = store.clear_enrollment_images(source_device=clean_source, person=clean_name)
+
+    saved = store.insert_enrollment_images(
+        {
+            "source_device": clean_source,
+            "name": clean_name,
+            "replace": replace,
+        },
+        image_rows,
+    )
+
+    for image_url in removed_urls:
+        relative = image_url.removeprefix("/uploads/").replace("/", os.sep)
+        old_path = UPLOAD_ROOT / relative
+        try:
+            if old_path.is_file() and old_path.resolve().is_relative_to(UPLOAD_ROOT.resolve()):
+                old_path.unlink()
+        except Exception:
+            pass
+
+    await hub.broadcast({"type": "enrollment_images", "images": saved})
+    await hub.broadcast({"type": "people", "people": store.list_people_profiles()})
+    return {"ok": True, "person": clean_name, "source_device": clean_source, "count": len(saved), "images": saved}
 
 
 @app.get("/api/events/conversation")

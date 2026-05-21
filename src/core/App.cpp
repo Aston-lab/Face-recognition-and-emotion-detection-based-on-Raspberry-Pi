@@ -945,6 +945,14 @@ void App::handleEnrollment() {
       std::cerr << "[Enrollment] cloud gallery update failed; local enrollment is still saved." << std::endl;
     }
   }
+  if (platform_client_ && platform_client_->enabled() && !enrolled_image_paths.empty()) {
+    std::cout << "[Enrollment] uploading " << enrolled_image_paths.size() << " samples to platform web..." << std::endl;
+    if (platform_client_->uploadEnrollmentImages(name, enrolled_image_paths, true)) {
+      std::cout << "[Enrollment] platform web images updated for: " << name << std::endl;
+    } else {
+      std::cerr << "[Enrollment] platform web image upload failed; local enrollment is still saved." << std::endl;
+    }
+  }
   std::cout << "[Enrollment] finished." << std::endl;
   updatePlatformStatus("idle");
 }

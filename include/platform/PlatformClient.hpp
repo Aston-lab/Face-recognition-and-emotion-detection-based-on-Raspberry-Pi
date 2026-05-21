@@ -64,6 +64,7 @@ class PlatformClient {
   bool enabled() const;
   void updateStatus(const PlatformStatus& status);
   void setCommandHandler(PlatformCommandHandler handler);
+  bool uploadEnrollmentImages(const std::string& name, const std::vector<std::string>& image_paths, bool replace) const;
 
  private:
   bool postStatus(bool online, const PlatformStatus& status) const;
@@ -72,6 +73,7 @@ class PlatformClient {
   PlatformCommandResult executeCommand(const PlatformCommand& command);
   bool postCommandResult(const PlatformCommand& command, const PlatformCommandResult& result) const;
   std::string statusUrl() const;
+  std::string enrollmentImagesUrl() const;
   std::string pendingCommandsUrl() const;
   std::string commandResultUrl(const std::string& command_id) const;
   void workerLoop();
