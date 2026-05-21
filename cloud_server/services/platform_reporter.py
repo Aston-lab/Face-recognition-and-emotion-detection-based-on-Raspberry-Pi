@@ -111,6 +111,8 @@ class PlatformReporter:
         try:
             with urllib.request.urlopen(request, timeout=self._config.timeout_ms / 1000.0):
                 return
+        except urllib.error.HTTPError as exc:
+            print(f"[PlatformReporter] status post failed: {_http_error_detail(exc)}")
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             print(f"[PlatformReporter] status post failed: {exc}")
 
@@ -125,6 +127,8 @@ class PlatformReporter:
         try:
             with urllib.request.urlopen(request, timeout=self._config.timeout_ms / 1000.0):
                 return
+        except urllib.error.HTTPError as exc:
+            print(f"[PlatformReporter] recognition event post failed: {_http_error_detail(exc)}")
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             print(f"[PlatformReporter] recognition event post failed: {exc}")
 
@@ -133,10 +137,17 @@ class PlatformReporter:
             return None
 
         identity = result.get("identity") if isinstance(result.get("identity"), dict) else {}
+        local_identity = result.get("local_identity") if isinstance(result.get("local_identity"), dict) else {}
         emotion = result.get("emotion") if isinstance(result.get("emotion"), dict) else {}
         if not identity and not emotion:
             return None
-        if not self._config.recognition_report_unknown and not _is_known_identity(identity):
+        report_identity = identity
+        identity_source = "cloud"
+        if not _is_known_identity(report_identity) and _is_known_identity(local_identity):
+            report_identity = local_identity
+            identity_source = "local_fallback"
+
+        if not self._config.recognition_report_unknown and not _is_known_identity(report_identity):
             return None
 
         source_device = str(
@@ -157,8 +168,13 @@ class PlatformReporter:
             "latency_ms": result.get("latency_ms"),
             "ts_ms": int(result.get("ts_ms") or time.time() * 1000),
         }
-        if identity:
-            event["identity"] = identity
+        if report_identity:
+            event["identity"] = report_identity
+        if identity_source == "local_fallback":
+            event["debug"] = {
+                "identity_source": identity_source,
+                "cloud_identity": identity,
+            }
         if emotion:
             event["emotion"] = emotion
         return event
@@ -176,3 +192,16 @@ class PlatformReporter:
 def _is_known_identity(identity: dict[str, Any]) -> bool:
     name = str(identity.get("name") or "").strip()
     return bool(identity.get("known") is True and name and name.lower() != "unknown")
+
+
+def _http_error_detail(exc: urllib.error.HTTPError) -> str:
+    try:
+        body = exc.read().decode("utf-8", errors="replace")
+    except Exception:
+        body = ""
+    body = body.strip()
+    if len(body) > 500:
+        body = body[:500] + "..."
+    if body:
+        return f"HTTP {exc.code} {exc.reason}: {body}"
+    return f"HTTP {exc.code} {exc.reason}"

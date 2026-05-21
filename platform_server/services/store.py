@@ -341,26 +341,34 @@ class SQLiteStore:
             raise KeyError(event_id)
         return self._recognition_row_to_dict(row)
 
-    def list_recognition_events(self, limit: int = 100, person: str | None = None) -> list[dict[str, Any]]:
-        safe_limit = max(1, min(500, int(limit)))
+    def list_recognition_events(
+        self,
+        limit: int = 100,
+        person: str | None = None,
+        start_ms: int | None = None,
+        end_ms: int | None = None,
+    ) -> list[dict[str, Any]]:
+        safe_limit = max(1, min(5000, int(limit)))
         person_name = str(person or "").strip()
+        clauses: list[str] = []
+        params: list[Any] = []
+        if person_name:
+            clauses.append("name IS NOT NULL")
+            clauses.append("LOWER(TRIM(name)) = LOWER(?)")
+            params.append(person_name)
+        if start_ms is not None:
+            clauses.append("ts_ms >= ?")
+            params.append(int(start_ms))
+        if end_ms is not None:
+            clauses.append("ts_ms < ?")
+            params.append(int(end_ms))
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(safe_limit)
         with self._lock:
-            if person_name:
-                rows = self._conn.execute(
-                    """
-                    SELECT * FROM recognition_events
-                    WHERE name IS NOT NULL
-                      AND LOWER(TRIM(name)) = LOWER(?)
-                    ORDER BY ts_ms DESC, id DESC
-                    LIMIT ?
-                    """,
-                    (person_name, safe_limit),
-                ).fetchall()
-            else:
-                rows = self._conn.execute(
-                    "SELECT * FROM recognition_events ORDER BY ts_ms DESC, id DESC LIMIT ?",
-                    (safe_limit,),
-                ).fetchall()
+            rows = self._conn.execute(
+                f"SELECT * FROM recognition_events {where} ORDER BY ts_ms DESC, id DESC LIMIT ?",
+                params,
+            ).fetchall()
         return [self._recognition_row_to_dict(row) for row in rows]
 
     def list_people_profiles(self) -> list[dict[str, Any]]:

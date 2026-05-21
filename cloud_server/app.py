@@ -237,6 +237,9 @@ async def analyze(
         local_name=local_name,
         local_conf=local_conf,
     )
+    local_identity = result.get("identity")
+    if isinstance(local_identity, dict):
+        result["local_identity"] = dict(local_identity)
 
     if _IDENTITY_SERVICE.ready:
         try:

@@ -975,9 +975,28 @@
         margin-top: 20px;
       }
 
+      .detail-section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin: 0 0 12px;
+      }
+
+      .detail-section-title {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 14px;
+      }
+
       .detail-section h3 {
-        margin: 0 0 10px;
+        margin: 0;
         font-size: 18px;
+      }
+
+      .smart-date-select {
+        min-width: 168px;
       }
 
       .detail-actions {
@@ -1091,6 +1110,24 @@
         font-size: 14px;
       }
 
+      .report-controls {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        margin: 0 0 18px;
+      }
+
+      .report-controls input[type="date"] {
+        min-height: 36px;
+        padding: 0 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #ffffff;
+        color: var(--ink);
+        font: inherit;
+      }
+
       .report-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1169,6 +1206,11 @@
 
         .report-emotion-row {
           grid-template-columns: 92px minmax(120px, 1fr) 58px;
+        }
+
+        .report-controls {
+          align-items: stretch;
+          flex-direction: column;
         }
 
         table {
@@ -1523,6 +1565,9 @@
         smartConversationExpanded: false,
         smartPeopleExpanded: false,
         smartRecognitionExpanded: false,
+        smartRecognitionEvents: [],
+        smartEmotionDate: "",
+        smartEmotionEventsLoaded: false,
         activeSmartDetail: "",
         smartCommandDevice: "",
         lastWifiFallDetected: false,
@@ -1968,6 +2013,17 @@
         return `${y}-${m}-${d}`;
       }
 
+      function dateRangeForKey(dateKey) {
+        const [year, month, day] = String(dateKey || localDateKey(Date.now())).split("-").map(Number);
+        const start = Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day)
+          ? new Date(year, month - 1, day)
+          : new Date();
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(start);
+        end.setDate(end.getDate() + 1);
+        return { dateKey: localDateKey(start.getTime()), startMs: start.getTime(), endMs: end.getTime() };
+      }
+
       function emotionEmoji(label) {
         const normalized = String(label || "").toLowerCase();
         if (normalized === "happy") return "😊";
@@ -1987,12 +2043,12 @@
         return "今天情绪比较多样，整体状态仍在持续观察中。";
       }
 
-      function buildReportStats(personName, events) {
-        const today = localDateKey(Date.now());
+      function buildReportStats(personName, events, dateKey = localDateKey(Date.now())) {
+        const selectedDate = dateRangeForKey(dateKey).dateKey;
         const personEvents = (events || [])
           .filter(isKnownRecognitionEvent)
           .filter((event) => eventPersonName(event).toLowerCase() === personName.toLowerCase())
-          .filter((event) => localDateKey(event.ts_ms || event.received_ms) === today);
+          .filter((event) => localDateKey(event.ts_ms || event.received_ms) === selectedDate);
 
         const buckets = {};
         for (const event of personEvents) {
@@ -2009,15 +2065,15 @@
           }))
           .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
         const dominant = emotions[0] || null;
-        return { today, total, emotions, dominant };
+        return { today: selectedDate, total, emotions, dominant };
       }
 
       function renderReportCard(personName, report) {
         const dominantLabel = report.dominant?.label || "-";
         const dominantPct = report.dominant ? `${report.dominant.pct.toFixed(1)}%` : "-";
         const summary = report.total
-          ? `${emotionEmoji(dominantLabel)} ${personName} 今日主要情绪是 ${dominantLabel}，占比 ${dominantPct}。${emotionTone(dominantLabel)}`
-          : `🙂 ${personName} 今天还没有有效识别记录，暂时无法生成情绪趋势。`;
+          ? `${emotionEmoji(dominantLabel)} ${personName} 在 ${report.today} 的主要情绪是 ${dominantLabel}，占比 ${dominantPct}。${emotionTone(dominantLabel)}`
+          : `🙂 ${personName} 在 ${report.today} 没有有效识别记录，暂时无法生成情绪趋势。`;
         const rows = report.emotions.length ? report.emotions : [{ label: "No data", count: 0, pct: 0 }];
 
         $("report-card").innerHTML = `
@@ -2028,6 +2084,10 @@
             </div>
             <span class="pill online">${report.total ? "Ready" : "No Data"}</span>
           </div>
+          <label class="report-controls">
+            <span class="muted">日期</span>
+            <input id="report-date" type="date" value="${escapeHtml(report.today)}" />
+          </label>
           <div class="report-grid">
             <div class="report-stat">
               <span class="muted">Records</span>
@@ -2059,11 +2119,17 @@
         state.activeReport = { personName, report, summary };
       }
 
-      async function openMoodReport(personName) {
-        const params = new URLSearchParams({ person: personName, limit: "500" });
+      async function openMoodReport(personName, dateKey = localDateKey(Date.now())) {
+        const range = dateRangeForKey(dateKey);
+        const params = new URLSearchParams({
+          person: personName,
+          limit: "5000",
+          start_ms: String(range.startMs),
+          end_ms: String(range.endMs),
+        });
         const res = await fetch(`/api/events/recognition?${params.toString()}`);
         const data = await res.json();
-        const report = buildReportStats(personName, data.events || []);
+        const report = buildReportStats(personName, data.events || [], range.dateKey);
         renderReportCard(personName, report);
         $("report-modal").hidden = false;
       }
@@ -2201,6 +2267,9 @@
                   margin-top: 8px;
                   color: #657085;
                   font-size: 16px;
+                }
+                .report-controls {
+                  display: none;
                 }
                 .pill {
                   display: inline-flex;
@@ -2438,6 +2507,86 @@
         return emotions.slice(0, 2).map((emotion) => `${emotion.label} ${Number(emotion.weighted_pct || 0).toFixed(1)}%`).join(" · ");
       }
 
+      function recognitionDateOptions(events) {
+        return Array.from(new Set(
+          (events || [])
+            .filter(isKnownRecognitionEvent)
+            .map((event) => localDateKey(event.ts_ms || event.received_ms))
+        )).sort().reverse();
+      }
+
+      function selectedSmartEmotionDate(events) {
+        const dates = recognitionDateOptions(events);
+        if (!dates.length) {
+          state.smartEmotionDate = "";
+          return "";
+        }
+        if (!dates.includes(state.smartEmotionDate)) {
+          state.smartEmotionDate = dates[0];
+        }
+        return state.smartEmotionDate;
+      }
+
+      function eventsForDate(events, dateKey) {
+        if (!dateKey) return [];
+        return (events || []).filter((event) => localDateKey(event.ts_ms || event.received_ms) === dateKey);
+      }
+
+      function buildPeopleProfilesFromEvents(events) {
+        const baseByName = new Map((state.people || []).map((person) => [String(person.name || "").toLowerCase(), person]));
+        const groups = new Map();
+        for (const event of (events || []).filter(isKnownRecognitionEvent)) {
+          const name = eventPersonName(event);
+          if (!name) continue;
+          const key = name.toLowerCase();
+          const group = groups.get(key) || {
+            name,
+            events: [],
+            sources: new Set(),
+            emotions: new Map(),
+            identitySum: 0,
+            identityCount: 0,
+            lastSeenMs: 0,
+          };
+          group.events.push(event);
+          if (event.source_device) group.sources.add(event.source_device);
+          if (event.identity_confidence != null && Number.isFinite(Number(event.identity_confidence))) {
+            group.identitySum += Number(event.identity_confidence);
+            group.identityCount += 1;
+          }
+          const emotionLabel = String(event.emotion || "").trim();
+          if (emotionLabel) {
+            const bucket = group.emotions.get(emotionLabel) || { label: emotionLabel, count: 0 };
+            bucket.count += 1;
+            group.emotions.set(emotionLabel, bucket);
+          }
+          group.lastSeenMs = Math.max(group.lastSeenMs, Number(event.ts_ms || event.received_ms || 0));
+          groups.set(key, group);
+        }
+
+        return Array.from(groups.values()).map((group) => {
+          const total = group.events.length;
+          const emotions = Array.from(group.emotions.values())
+            .map((emotion) => ({
+              label: emotion.label,
+              count: emotion.count,
+              weighted_pct: total > 0 ? emotion.count * 100 / total : 0,
+            }))
+            .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+          const base = baseByName.get(group.name.toLowerCase()) || {};
+          return {
+            ...base,
+            name: group.name,
+            sources: Array.from(group.sources),
+            event_count: total,
+            avg_identity_confidence: group.identityCount ? group.identitySum / group.identityCount : 0,
+            dominant_emotion: emotions[0] || null,
+            emotions,
+            last_seen_ms: group.lastSeenMs,
+          };
+        }).sort((a, b) => Number(b.event_count || 0) - Number(a.event_count || 0) || String(a.name || "").localeCompare(String(b.name || "")));
+      }
+
       function renderSmartDashboard() {
         const telemetry = latestTelemetry();
         const temp = telemetryValue(telemetry, "temperature");
@@ -2589,8 +2738,20 @@
       }
 
       function emotionDetailHtml() {
-        const people = state.people || [];
+        const sourceEvents = (state.smartRecognitionEvents && state.smartRecognitionEvents.length)
+          ? state.smartRecognitionEvents
+          : (state.recognition_events || []);
+        const knownEvents = sourceEvents.filter(isKnownRecognitionEvent);
+        const dateOptions = recognitionDateOptions(knownEvents);
+        const selectedDate = selectedSmartEmotionDate(knownEvents);
+        const dayEvents = eventsForDate(knownEvents, selectedDate);
+        const people = buildPeopleProfilesFromEvents(dayEvents);
         const visiblePeople = visibleHistory(people, state.smartPeopleExpanded);
+        const dateSelect = dateOptions.length
+          ? `<select id="smart-emotion-date" class="smart-date-select" aria-label="情绪统计日期">
+              ${dateOptions.map((dateKey) => `<option value="${escapeHtml(dateKey)}" ${dateKey === selectedDate ? "selected" : ""}>${escapeHtml(dateKey)}</option>`).join("")}
+            </select>`
+          : `<select id="smart-emotion-date" class="smart-date-select" aria-label="情绪统计日期" disabled><option>暂无记录</option></select>`;
         const peopleRows = people.length ? visiblePeople.map((person) => `
           <tr>
             <td>${personPhotoHtml(person)}</td>
@@ -2603,7 +2764,7 @@
             <td><button type="button" data-report-person="${escapeHtml(person.name || "")}">心情日报</button></td>
           </tr>
         `).join("") : '<tr><td class="empty" colspan="8">No people</td></tr>';
-        const events = (state.recognition_events || []).filter(isKnownRecognitionEvent).filter(matchesSelectedPerson);
+        const events = dayEvents.filter(matchesSelectedPerson);
         const visibleEvents = visibleHistory(events, state.smartRecognitionExpanded);
         const eventRows = events.length ? visibleEvents.map((event) => {
           const identity = event.name ? `${event.name}${event.identity_confidence == null ? "" : ` ${Number(event.identity_confidence).toFixed(1)}%`}` : "-";
@@ -2620,10 +2781,15 @@
         }).join("") : '<tr><td class="empty" colspan="5">No recognition</td></tr>';
         return `
           <div class="detail-section">
-            <h3>People</h3>
-            <div class="section-actions" style="margin-bottom:12px">
-              <button class="text-button history-toggle" type="button" data-smart-toggle="smartPeopleExpanded" ${people.length <= 5 ? "hidden" : ""}>${state.smartPeopleExpanded ? "Collapse" : `Show all ${people.length}`}</button>
-              <span class="muted">${state.smartPeopleExpanded ? people.length : Math.min(people.length, 5)} / ${people.length}</span>
+            <div class="detail-section-head">
+              <div class="detail-section-title">
+                <h3>People</h3>
+                ${dateSelect}
+              </div>
+              <div class="section-actions">
+                <button class="text-button history-toggle" type="button" data-smart-toggle="smartPeopleExpanded" ${people.length <= 5 ? "hidden" : ""}>${state.smartPeopleExpanded ? "Collapse" : `Show all ${people.length}`}</button>
+                <span class="muted">${state.smartPeopleExpanded ? people.length : Math.min(people.length, 5)} / ${people.length}</span>
+              </div>
             </div>
             <div class="detail-table-wrap"><table><thead><tr><th>Photo</th><th>Person</th><th>Records</th><th>Identity Avg</th><th>Dominant Emotion</th><th>Emotion Share</th><th>Last Seen</th><th>Report</th></tr></thead><tbody>${peopleRows}</tbody></table></div>
           </div>
@@ -2661,6 +2827,13 @@
         state.activeSmartDetail = kind;
         renderSmartDetail();
         $("smart-detail-modal").hidden = false;
+        if (kind === "emotion") {
+          loadSmartEmotionRecognitionEvents()
+            .then(() => {
+              if (state.activeSmartDetail === "emotion") renderSmartDetail();
+            })
+            .catch(() => setSocketState("HTTP error", "bad"));
+        }
       }
       window.openSmartDetail = openSmartDetail;
 
@@ -2728,12 +2901,20 @@
         $("header-ws-text").textContent = `${$("ws-state").textContent} · ${$("updated").textContent}`;
       }
 
-      async function loadRecognitionEvents() {
-        const params = new URLSearchParams({ limit: "500" });
+      async function loadRecognitionEvents(limit = 500) {
+        const params = new URLSearchParams({ limit: String(limit) });
         if (state.selectedPerson) params.set("person", state.selectedPerson);
         const res = await fetch(`/api/events/recognition?${params.toString()}`);
         const data = await res.json();
         state.recognition_events = data.events || [];
+      }
+
+      async function loadSmartEmotionRecognitionEvents() {
+        const params = new URLSearchParams({ limit: "5000" });
+        const res = await fetch(`/api/events/recognition?${params.toString()}`);
+        const data = await res.json();
+        state.smartRecognitionEvents = data.events || [];
+        state.smartEmotionEventsLoaded = true;
       }
 
       async function selectPerson(name) {
@@ -2756,6 +2937,9 @@
           await loadRecognitionEvents();
         } else {
           state.recognition_events = data.recognition_events || [];
+        }
+        if (!state.smartEmotionEventsLoaded) {
+          state.smartRecognitionEvents = data.recognition_events || [];
         }
         renderAll();
       }
@@ -2905,6 +3089,9 @@
               return;
             }
             state.recognition_events = message.recognition_events || [];
+            if (!state.smartEmotionEventsLoaded) {
+              state.smartRecognitionEvents = message.recognition_events || [];
+            }
           }
           if (message.type === "device_status") {
             const device = message.device;
@@ -2944,6 +3131,8 @@
               state.recognition_events.unshift(message.event);
               state.recognition_events = state.recognition_events.slice(0, 500);
             }
+            state.smartRecognitionEvents.unshift(message.event);
+            state.smartRecognitionEvents = state.smartRecognitionEvents.slice(0, 5000);
           }
           if (message.type === "conversation_event") {
             state.conversation_events.unshift(message.event);
@@ -3008,6 +3197,10 @@
       $("report-modal").addEventListener("click", (event) => {
         if (event.target.matches("[data-close-report]")) closeMoodReport();
       });
+      $("report-modal").addEventListener("change", (event) => {
+        if (!event.target.matches("#report-date") || !state.activeReport) return;
+        openMoodReport(state.activeReport.personName, event.target.value).catch(() => setSocketState("HTTP error", "bad"));
+      });
       $("close-wifi-fall-alert").addEventListener("click", closeWifiFallAlert);
       $("wifi-fall-alert").addEventListener("click", (event) => {
         if (event.target.matches("[data-close-wifi-fall-alert]")) closeWifiFallAlert();
@@ -3045,7 +3238,10 @@
         }
         const reportButton = event.target.closest("button[data-report-person]");
         if (reportButton) {
-          openMoodReport(reportButton.getAttribute("data-report-person") || "").catch(() => setSocketState("HTTP error", "bad"));
+          const reportDate = state.activeSmartDetail === "emotion" && state.smartEmotionDate
+            ? state.smartEmotionDate
+            : localDateKey(Date.now());
+          openMoodReport(reportButton.getAttribute("data-report-person") || "", reportDate).catch(() => setSocketState("HTTP error", "bad"));
         }
         const clearTelemetryButton = event.target.closest("button[data-clear-telemetry]");
         if (clearTelemetryButton) {
@@ -3103,6 +3299,11 @@
         }
       });
       $("smart-detail-modal").addEventListener("change", (event) => {
+        if (event.target.matches("#smart-emotion-date")) {
+          state.smartEmotionDate = event.target.value || "";
+          renderSmartDetail();
+          return;
+        }
         if (!event.target.matches("#smart-command-device")) return;
         state.smartCommandDevice = event.target.value || "";
         renderSmartDetail();

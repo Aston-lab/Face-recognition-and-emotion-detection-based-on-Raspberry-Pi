@@ -305,10 +305,20 @@ async def post_status(
 
 @app.get("/api/events/recognition")
 def recognition_events(
-    limit: int = Query(100, ge=1, le=500),
+    limit: int = Query(100, ge=1, le=5000),
     person: str | None = Query(None),
+    start_ms: int | None = Query(None, ge=0),
+    end_ms: int | None = Query(None, ge=0),
 ) -> dict[str, Any]:
-    return {"ok": True, "events": store.list_recognition_events(limit=limit, person=person)}
+    return {
+        "ok": True,
+        "events": store.list_recognition_events(
+            limit=limit,
+            person=person,
+            start_ms=start_ms,
+            end_ms=end_ms,
+        ),
+    }
 
 
 @app.post("/api/events/recognition")

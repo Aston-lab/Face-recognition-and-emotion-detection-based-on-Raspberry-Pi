@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import os
+import site
 import subprocess
 from dataclasses import dataclass
 from functools import lru_cache
+from pathlib import Path
 from typing import List, Optional
+
+
+_DLL_DIRECTORY_HANDLES = []
 
 
 @dataclass(frozen=True)
@@ -26,6 +32,22 @@ def preload_onnxruntime_dlls() -> Optional[str]:
             return "onnxruntime.preload_dlls is not available"
 
         errors: List[str] = []
+        if os.name == "nt":
+            for site_dir in site.getsitepackages():
+                nvidia_root = Path(site_dir) / "nvidia"
+                if not nvidia_root.exists():
+                    continue
+                for bin_dir in sorted(nvidia_root.glob("*/bin")):
+                    if not bin_dir.is_dir():
+                        continue
+                    bin_dir_str = str(bin_dir)
+                    path_parts = os.environ.get("PATH", "").split(os.pathsep)
+                    if bin_dir_str not in path_parts:
+                        os.environ["PATH"] = bin_dir_str + os.pathsep + os.environ.get("PATH", "")
+                    try:
+                        _DLL_DIRECTORY_HANDLES.append(os.add_dll_directory(bin_dir_str))
+                    except Exception as exc:
+                        errors.append(f"dll directory skipped {bin_dir_str}: {exc}")
 
         # Importing torch first lets ONNX Runtime reuse CUDA/cuDNN DLLs bundled
         # with PyTorch wheels when that install route is chosen.
